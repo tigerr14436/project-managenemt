@@ -1,7 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 from datetime import datetime
-
+from enum import Enum
 
 # ---------- TASK ----------
 
@@ -32,6 +32,42 @@ class TaskUpdate(BaseModel):
 class TaskOut(TaskBase):
     """Dữ liệu trả về cho client, có thêm id"""
     id: str = Field(..., alias="_id")
+
+    class Config:
+        populate_by_name = True
+
+
+# ---------- USER  ----------
+
+class UserRole(str, Enum):
+    pm = "PM"
+    developer = "Developer"
+    tester = "Tester"
+
+
+class UserBase(BaseModel):
+    email: EmailStr
+    full_name: str
+    role: UserRole = UserRole.developer
+
+
+class UserCreate(UserBase):
+    """Dữ liệu Client gửi lên khi ĐĂNG KÝ (chứa mật khẩu thô)"""
+    password: str = Field(..., min_length=6, description="Mật khẩu tối thiểu 6 ký tự")
+
+
+class UserLogin(BaseModel):
+    """Dữ liệu Client gửi lên khi ĐĂNG NHẬP"""
+    email: EmailStr
+    password: str
+
+
+class UserOut(BaseModel):
+    id: str = Field(..., alias="_id")
+    email: EmailStr
+    full_name: str
+    role: str
+    created_at: Optional[datetime] = None
 
     class Config:
         populate_by_name = True
