@@ -1,10 +1,9 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, APIRouter, Response
 from fastapi.middleware.cors import CORSMiddleware
 from bson import ObjectId
 from bson.errors import InvalidId
- 
 from database import tasks_collection
-from models import TaskCreate, TaskUpdate, TaskOut
+from models import *
  
 app = FastAPI(title="Quản lý công việc & dự án CNTT API")
  
@@ -87,9 +86,59 @@ async def delete_task(task_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Không tìm thấy task")
     return None
- 
- 
-@app.get("/")
-async def root():
-    return {"message": "API đang chạy. Vào /docs để xem tài liệu API."}
- 
+
+
+# ---------- REGISTER ----------
+@app.post("/register", response_model=UserOut)
+async def register(user: UserCreate):
+    # kiểm tra xem email đã tồn tại trong MongoDB chưa
+    existing_user = await users_collection.find_one({"email": user.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email này đã được sử dụng!")
+
+    # băm mật khẩu (Mật khẩu thô không bao giờ được lưu trực tiếp)
+    hashed_pwd = pwd_context.hash(user.password)
+
+    # đóng gói dữ liệu để LƯU VĨNH VIỄN vào MongoDB Atlas
+    user_dict = {
+        "email": user.email,
+        "password_hash": hashed_pwd, # lưu bản băm
+        "full_name": user.full_name,
+        "role": user.role,
+        "created_at": datetime.now()
+    }
+    
+    # Lệnh này đẩy dữ liệu lên cơ sở dữ liệu MongoDB đám mây
+    result = await users_collection.insert_one(user_dict)
+    
+    user_dict["_id"] = str(result.inserted_id)
+    return user_dict
+
+
+# ---------- LOGIN ----------
+@app.post("/login")
+async def login(user_credentials: UserLogin):
+    # tìm tài khoản trong MongoDB xem đã từng đăng ký chưa
+    db_user = await users_collection.find_one({"email": user_credentials.email})
+    if not db_user:
+        raise HTTPException(status_code=400, detail="Sai email hoặc mật khẩu!")
+
+    # so sánh mật khẩu nhập vào với mật khẩu đã lưu trong MongoDB
+    is_password_correct = pwd_context.verify(user_credentials.password, db_user["password_hash"])
+    if not is_password_correct:
+        raise HTTPException(status_code=400, detail="Sai email hoặc mật khẩu!")
+
+    # đăng nhập thành công sẽ Trả về thông báo hoặc token
+    return {"message": "Đăng nhập thành công!", "user_id": str(db_user["_id"])}
+
+# ---------- LOGOUT ----------
+@app.post("/logout")
+async def logout(response: Response):
+    # Xóa Cookie lưu token trên trình duyệt người dùng
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        samesite="lax",
+        secure=False # đổi thành True khi chạy HTTPS thực tế
+    )
+    return {"message": "Đăng xuất thành công!"}
