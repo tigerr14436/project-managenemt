@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Auth.css';
 
+const API_BASE = 'http://127.0.0.1:8000/api';
+
 export default function RegisterForm() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -13,6 +15,7 @@ export default function RegisterForm() {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -53,8 +56,9 @@ export default function RegisterForm() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setServerError('');
     const validationErrors = validateForm();
 
     if (Object.keys(validationErrors).length > 0) {
@@ -63,16 +67,37 @@ export default function RegisterForm() {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      alert('Đăng ký thành công!');
+
+    try {
+      // ===== GỌI API THẬT tới backend, thay cho setTimeout giả trước đây =====
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.detail || 'Không thể tạo tài khoản. Vui lòng thử lại.');
+      }
+
       navigate('/login');
-    }, 1000);
+    } catch (err) {
+      setServerError(err.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="auth-card">
       <h2 className="auth-title">Tạo tài khoản</h2>
+
+      {serverError && <p className="error-text" style={{ marginBottom: 12 }}>{serverError}</p>}
 
       <form onSubmit={handleSubmit} noValidate>
         <div className="input-group">
