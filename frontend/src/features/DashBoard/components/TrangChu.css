@@ -1,0 +1,183 @@
+:root {
+  --mau-nen-trang: #0F172A;
+  --mau-nen-the: #1E293B;
+  --mau-duong-vien: #334155;
+  --mau-chinh: #6366F1;
+  --mau-chinh-hover: #4F46E5;
+  --mau-chu-chinh: #F8FAFC;
+  --mau-chu-mo: #94A3B8;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--mau-nen-trang);
+  color: var(--mau-chu-chinh);
+  overflow-x: hidden; /* Chống vỡ khung theo chiều ngang */
+}
+
+.khung-trang-chu {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Header Navbar */
+.thanh-dau-trang {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 4rem;
+  border-bottom: 1px solid var(--mau-duong-vien);
+  background-color: var(--mau-nen-trang);
+}
+
+.logo-thuong-hieu {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--mau-chinh);
+  letter-spacing: -0.5px;
+}
+
+.nhom-nut-dieu-huong {
+  display: flex;
+  gap: 1rem;
+}
+
+.nut-vien {
+  padding: 0.6rem 1.25rem;
+  background-color: transparent;
+  border: 1px solid var(--mau-duong-vien);
+  color: var(--mau-chu-chinh);
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nut-vien:hover {
+  background-color: var(--mau-nen-the);
+  border-color: var(--mau-chu-mo);
+}
+
+.nut-chinh {
+  padding: 0.6rem 1.25rem;
+  background-color: var(--mau-chinh);
+  border: none;
+  color: #ffffff;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.nut-chinh:hover {
+  background-color: var(--mau-chinh-hover);
+}
+
+/* Khu vực Hero giới thiệu */
+.khu-vuc-chao-mung {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 4rem 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.nhan-noi-bat {
+  background-color: rgba(99, 102, 241, 0.1);
+  color: var(--mau-chinh);
+  padding: 0.4rem 1rem;
+  border-radius: 2rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.tieu-de-lon {
+  font-size: 3.25rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 1.25rem;
+}
+
+.doan-van-mota {
+  font-size: 1.125rem;
+  color: var(--mau-chu-mo);
+  line-height: 1.6;
+  margin-bottom: 2.5rem;
+}
+
+.nhom-nut-keu-goi {
+  display: flex;
+  gap: 1rem;
+}
+
+.nut-keu-goi-chinh,
+.nut-keu-goi-phu {
+  padding: 0.875rem 2rem;
+  font-size: 1rem;
+}
+
+/* Footer */
+.chan-trang {
+  text-align: center;
+  padding: 1.5rem;
+  border-top: 1px solid var(--mau-duong-vien);
+  color: var(--mau-chu-mo);
+  font-size: 0.875rem;
+}
+
+/* ===================================================
+   CẤU HÌNH TƯƠNG THÍCH ĐA THIẾT BỊ (RESPONSIVE)
+   =================================================== */
+
+@media (max-width: 768px) {
+  .thanh-dau-trang {
+    padding: 1rem 1.5rem; 
+  }
+
+  .tieu-de-lon {
+    font-size: 2.25rem; 
+  }
+
+  .doan-van-mota {
+    font-size: 1rem;
+  }
+
+  .khu-vuc-chao-mung {
+    padding: 3rem 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-thuong-hieu {
+    font-size: 1.25rem;
+  }
+
+  .nhom-nut-dieu-huong .nut-vien,
+  .nhom-nut-dieu-huong .nut-chinh {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+  }
+
+  .tieu-de-lon {
+    font-size: 1.85rem; 
+  }
+
+  .nhom-nut-keu-goi {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .nut-keu-goi-chinh,
+  .nut-keu-goi-phu {
+    width: 100%;
+  }
+}
