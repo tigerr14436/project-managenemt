@@ -7,18 +7,7 @@ export default function TrangChu() {
 
   return (
     <div className="khung-trang-chu">
-      {/* Thanh Header ở trên cùng */}
-      <header className="thanh-dau-trang">
-        <div className="logo-thuong-hieu">DevTask</div>
-        <div className="nhom-nut-dieu-huong">
-          <button className="nut-vien" onClick={() => dieuHuong('/dang-nhap')}>
-            Đăng nhập
-          </button>
-          <button className="nut-chinh" onClick={() => dieuHuong('/dang-ky')}>
-            Đăng ký
-          </button>
-        </div>
-      </header>
+      
 
       {/* Nội dung chào mừng chính */}
       <main className="khu-vuc-chao-mung">

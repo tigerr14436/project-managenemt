@@ -1,0 +1,132 @@
+.workspace-container {
+  max-width: 1100px;
+  margin: 20px auto;
+  padding: 0 15px;
+}
+
+.workspace-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 20px;
+}
+
+.workspace-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .workspace-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.card-box h3, .card-box h4 {
+  margin-top: 0;
+  margin-bottom: 14px;
+  color: #2d3748;
+}
+
+.workspace-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workspace-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.workspace-item:hover {
+  background-color: #f7fafc;
+}
+
+.workspace-item.active {
+  background-color: #ebf8ff;
+  border-color: #3182ce;
+  font-weight: 600;
+  color: #2b6cb0;
+}
+
+.workspace-header h3 {
+  font-size: 20px;
+  color: #2d3748;
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.workspace-header h3 span {
+  color: #3182ce;
+}
+
+.workspace-grid-forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.team-section h4 {
+  font-size: 18px;
+  color: #2d3748;
+  margin-bottom: 12px;
+}
+
+.team-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.team-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.team-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.team-icon {
+  font-size: 20px;
+}
+
+.team-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.team-sub {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  color: #718096;
+}
+
+.empty-workspace, .empty-text {
+  color: #a0aec0;
+  text-align: center;
+  padding: 20px;
+}
