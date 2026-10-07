@@ -47,7 +47,7 @@ class Task(Base):
     )
 
 
-# ========== SCHEMA CHO AUTH (Pydantic) ==========
+# ========== SCHEMA CHO AUTH / USERS (Pydantic) ==========
 
 class UserRegister(BaseModel):
     name: str = Field(..., min_length=1)
@@ -58,6 +58,10 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1)
 
 
 class UserOut(BaseModel):
