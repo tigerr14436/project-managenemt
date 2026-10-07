@@ -14,7 +14,7 @@ import {
 import './AuthModal.css';
 
 export default function AuthModal({ isOpen, onClose, onSuccess }) {
-  const [isLogin, setIsLogin] = useState(true); // true: Đăng nhập, false: Đăng ký
+  const [isLogin, setIsLogin] = useState(true); 
   const [formData, setFormData] = useState({
     name: '',
     email: '',

@@ -16,7 +16,6 @@ import './Navigation.css';
 export default function Navigation({ children }) {
   const [moSidebar, setMoSidebar] = useState(false);
   const [moAuthModal, setMoAuthModal] = useState(false);
-  const [tabXacThuc, setTabXacThuc] = useState('login');
 
   const dieuHuong = useNavigate();
   const viTriHienTai = useLocation();
@@ -29,8 +28,7 @@ export default function Navigation({ children }) {
     dieuHuong('/');
   };
 
-  const xulyMoAuthModal = (tab = 'login') => {
-    setTabXacThuc(tab);
+  const xulyMoAuthModal = () => {
     setMoAuthModal(true);
     setMoSidebar(false);
   };
@@ -58,11 +56,11 @@ export default function Navigation({ children }) {
             </button>
           ) : (
             <div className="header-auth-btns">
-              <button className="header-btn login-btn" onClick={() => xulyMoAuthModal('login')}>
+              <button className="header-btn login-btn" onClick={xulyMoAuthModal}>
                 <LogIn size={16} />
                 <span>Đăng nhập</span>
               </button>
-              <button className="header-btn register-btn" onClick={() => xulyMoAuthModal('register')}>
+              <button className="header-btn register-btn" onClick={xulyMoAuthModal}>
                 <UserPlus size={16} />
                 <span>Đăng ký</span>
               </button>
@@ -79,32 +77,38 @@ export default function Navigation({ children }) {
         {/* SIDEBAR CỐ ĐỊNH BÊN TRÁI */}
         <aside className={`main-sidebar ${moSidebar ? 'open' : ''}`}>
           <nav className="sidebar-nav">
-            <Link
-              to="/"
-              onClick={() => setMoSidebar(false)}
-              className={`nav-item ${viTriHienTai.pathname === '/' ? 'active' : ''}`}
-            >
-              <Home size={18} className="nav-icon" />
-              <span>Trang chủ</span>
-            </Link>
+            {!daDangNhap ? (
+              /* CHƯA ĐĂNG NHẬP: CHỈ HIỆN TRANG CHỦ */
+              <Link
+                to="/"
+                onClick={() => setMoSidebar(false)}
+                className={`nav-item ${viTriHienTai.pathname === '/' ? 'active' : ''}`}
+              >
+                <Home size={18} className="nav-icon" />
+                <span>Trang chủ</span>
+              </Link>
+            ) : (
+              /* ĐÃ ĐĂNG NHẬP: ẨN TRANG CHỦ, HIỆN 2 MỤC CÒN LẠI */
+              <>
+                <Link
+                  to="/du-an"
+                  onClick={() => setMoSidebar(false)}
+                  className={`nav-item ${viTriHienTai.pathname === '/du-an' ? 'active' : ''}`}
+                >
+                  <FolderKanban size={18} className="nav-icon" />
+                  <span>Quản lý Dự án</span>
+                </Link>
 
-            <Link
-              to="/du-an"
-              onClick={() => setMoSidebar(false)}
-              className={`nav-item ${viTriHienTai.pathname === '/du-an' ? 'active' : ''}`}
-            >
-              <FolderKanban size={18} className="nav-icon" />
-              <span>Quản lý Dự án</span>
-            </Link>
-
-            <Link
-              to="/workspace"
-              onClick={() => setMoSidebar(false)}
-              className={`nav-item ${viTriHienTai.pathname === '/workspace' ? 'active' : ''}`}
-            >
-              <Building2 size={18} className="nav-icon" />
-              <span>Workspace & Nhóm</span>
-            </Link>
+                <Link
+                  to="/workspace"
+                  onClick={() => setMoSidebar(false)}
+                  className={`nav-item ${viTriHienTai.pathname === '/workspace' ? 'active' : ''}`}
+                >
+                  <Building2 size={18} className="nav-icon" />
+                  <span>Workspace & Nhóm</span>
+                </Link>
+              </>
+            )}
           </nav>
         </aside>
 
@@ -112,11 +116,12 @@ export default function Navigation({ children }) {
         <main className="main-content">{children}</main>
       </div>
 
-      {/* POP-UP XÁC THỰC */}
       <AuthModal
-        moModal={moAuthModal}
-        xulyDong={() => setMoAuthModal(false)}
-        tabBanDau={tabXacThuc}
+        isOpen={moAuthModal}
+        onClose={() => setMoAuthModal(false)}
+        onSuccess={() => {
+          window.location.reload();
+        }}
       />
     </div>
   );

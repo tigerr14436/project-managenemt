@@ -14,11 +14,13 @@ import {
   Copy,
   Check,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  LayoutGrid,
+  List,
+  CheckSquare
 } from 'lucide-react';
 import './TrangDuAn.css';
 
-// Hàm gửi request có xác thực JWT
 async function guiYeuCauXacThuc(url, options = {}) {
   const token = localStorage.getItem('access_token');
   if (!token) throw new Error('Người dùng chưa đăng nhập');
@@ -40,19 +42,22 @@ async function guiYeuCauXacThuc(url, options = {}) {
 export default function TrangDuAn() {
   const dieuHuong = useNavigate();
   
-  // Danh sách dự án mẫu ban đầu
+  // Dữ liệu dự án mở rộng sát với thực tế DevTask
   const [danhSachDuAn, setDanhSachDuAn] = useState([
-    { id: 1, name: 'Hệ thống E-Commerce DevTask', join_code: 'DEV-8892', role: 'Owner', member_count: 5 },
-    { id: 2, name: 'Ứng dụng Mobile Banking', join_code: 'MB-1029', role: 'Member', member_count: 8 },
-    { id: 3, name: 'Website Quản lý Nhân sự HR', join_code: 'HR-5541', role: 'Owner', member_count: 3 }
+    { id: 1, name: 'Hệ thống E-Commerce DevTask', join_code: 'DEV-8892', role: 'Owner', member_count: 5, status: 'active', tasks: { completed: 18, total: 24 } },
+    { id: 2, name: 'Ứng dụng Mobile Banking', join_code: 'MB-1029', role: 'Member', member_count: 8, status: 'active', tasks: { completed: 4, total: 15 } },
+    { id: 3, name: 'Website Quản lý Nhân sự HR', join_code: 'HR-5541', role: 'Owner', member_count: 3, status: 'completed', tasks: { completed: 10, total: 10 } }
   ]);
 
   const [tenDuAnMoi, setTenDuAnMoi] = useState('');
   const [maThamGia, setMaThamGia] = useState('');
   const [tuKhoaTimKiem, setTuKhoaTimKiem] = useState('');
+  const [boLocTrangThai, setBoLocTrangThai] = useState('all');
+  const [cheDoXem, setCheDoXem] = useState('grid'); // 'grid' hoặc 'list'
+
   const [thongBao, setThongBao] = useState({ loai: '', noiDung: '' });
   const [dangTai, setDangTai] = useState(false);
-  const [daSaoChep, setDaSaoChep] = useState(null); // Lưu ID mã dự án đã copy
+  const [daSaoChep, setDaSaoChep] = useState(null);
 
   useEffect(() => {
     taiDanhSachDuAn();
@@ -69,7 +74,6 @@ export default function TrangDuAn() {
     }
   };
 
-  // Tạo dự án mới
   const xuLyTaoDuAn = async (e) => {
     e.preventDefault();
     if (!tenDuAnMoi.trim()) return;
@@ -87,13 +91,14 @@ export default function TrangDuAn() {
       setTenDuAnMoi('');
       setThongBao({ loai: 'success', noiDung: 'Tạo dự án mới thành công!' });
     } catch (loi) {
-      // Mock dữ liệu nếu chưa có API backend
       const mockProject = {
         id: Date.now(),
         name: tenDuAnMoi,
         join_code: `PRJ-${Math.floor(1000 + Math.random() * 9000)}`,
         role: 'Owner',
-        member_count: 1
+        member_count: 1,
+        status: 'active',
+        tasks: { completed: 0, total: 0 }
       };
       setDanhSachDuAn((prev) => [mockProject, ...prev]);
       setTenDuAnMoi('');
@@ -103,7 +108,6 @@ export default function TrangDuAn() {
     }
   };
 
-  // Tham gia dự án bằng Join Code
   const xuLyThamGiaDuAn = async (e) => {
     e.preventDefault();
     if (!maThamGia.trim()) return;
@@ -127,14 +131,12 @@ export default function TrangDuAn() {
     }
   };
 
-  // Sao chép mã mời
   const saoChepMaMoi = (code, id) => {
     navigator.clipboard.writeText(code);
     setDaSaoChep(id);
     setTimeout(() => setDaSaoChep(null), 2000);
   };
 
-  // Xóa dự án
   const xuLyXoaDuAn = async (id, name) => {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa/rời khỏi dự án "${name}"?`)) return;
 
@@ -143,29 +145,25 @@ export default function TrangDuAn() {
       setDanhSachDuAn((prev) => prev.filter((item) => item.id !== id));
       setThongBao({ loai: 'success', noiDung: `Đã xóa dự án "${name}"` });
     } catch (loi) {
-      // Mock xóa local nếu API chưa có
       setDanhSachDuAn((prev) => prev.filter((item) => item.id !== id));
       setThongBao({ loai: 'success', noiDung: `Đã xóa dự án "${name}"` });
     }
   };
 
-  // Lọc danh sách dự án theo từ khóa
-  const danhSachLoc = danhSachDuAn.filter((duAn) =>
-    duAn.name.toLowerCase().includes(tuKhoaTimKiem.toLowerCase()) ||
-    duAn.join_code.toLowerCase().includes(tuKhoaTimKiem.toLowerCase())
-  );
+  const danhSachLoc = danhSachDuAn.filter((duAn) => {
+    const khopTuKhoa = duAn.name.toLowerCase().includes(tuKhoaTimKiem.toLowerCase()) ||
+                       duAn.join_code.toLowerCase().includes(tuKhoaTimKiem.toLowerCase());
+    const khopTrangThai = boLocTrangThai === 'all' || duAn.status === boLocTrangThai;
+    return khopTuKhoa && khopTrangThai;
+  });
 
   return (
     <div className="projects-container">
-      {/* HEADER TỔNG QUAN */}
       <div className="projects-header">
-        <div>
-          <h2 className="projects-title">Quản lý Dự án</h2>
-          <p className="projects-subtitle">Khởi tạo dự án mới, quản lý không gian làm việc hoặc tham gia bằng mã mời</p>
-        </div>
+        <h2 className="projects-title">Quản lý Dự án</h2>
+        <p className="projects-subtitle">Khởi tạo dự án mới, theo dõi tiến độ và làm việc nhóm hiệu quả</p>
       </div>
 
-      {/* THÔNG BÁO ALERT */}
       {thongBao.noiDung && (
         <div className={`alert-banner ${thongBao.loai}`}>
           {thongBao.loai === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
@@ -173,9 +171,8 @@ export default function TrangDuAn() {
         </div>
       )}
 
-      {/* LƯỚI KHUNG THAO TÁC (TẠO & THAM GIA) */}
+      {/* LƯỚI KHUNG THAO TÁC */}
       <div className="projects-grid">
-        {/* CARD TẠO DỰ ÁN */}
         <div className="project-action-card">
           <div className="card-header-icon">
             <FolderPlus size={22} />
@@ -202,7 +199,6 @@ export default function TrangDuAn() {
           </form>
         </div>
 
-        {/* CARD THAM GIA DỰ ÁN */}
         <div className="project-action-card">
           <div className="card-header-icon secondary">
             <UserPlus size={22} />
@@ -230,7 +226,7 @@ export default function TrangDuAn() {
         </div>
       </div>
 
-      {/* DANH SÁCH DỰ ÁN */}
+      {/* KHUNG DANH SÁCH & BỘ LỌC */}
       <div className="project-list-section">
         <div className="section-title-bar">
           <div className="section-title-wrap">
@@ -238,79 +234,161 @@ export default function TrangDuAn() {
             <h3>Dự án của bạn ({danhSachLoc.length})</h3>
           </div>
 
-          {/* Ô TÌM KIẾM */}
-          <div className="search-box-custom">
-            <Search size={16} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm dự án hoặc mã..."
-              value={tuKhoaTimKiem}
-              onChange={(e) => setTuKhoaTimKiem(e.target.value)}
-            />
+          <div className="toolbar-controls">
+            <div className="search-box-custom">
+              <Search size={16} className="search-icon" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm dự án hoặc mã..."
+                value={tuKhoaTimKiem}
+                onChange={(e) => setTuKhoaTimKiem(e.target.value)}
+              />
+            </div>
+
+            <select 
+              className="filter-select"
+              value={boLocTrangThai}
+              onChange={(e) => setBoLocTrangThai(e.target.value)}
+            >
+              <option value="all">Tất cả trạng thái</option>
+              <option value="active">Đang thực hiện</option>
+              <option value="completed">Đã hoàn thành</option>
+            </select>
+
+            <div className="view-mode-toggle">
+              <button 
+                className={`view-btn ${cheDoXem === 'grid' ? 'active' : ''}`}
+                onClick={() => setCheDoXem('grid')}
+                title="Chế độ Lưới"
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button 
+                className={`view-btn ${cheDoXem === 'list' ? 'active' : ''}`}
+                onClick={() => setCheDoXem('list')}
+                title="Chế độ Danh sách"
+              >
+                <List size={16} />
+              </button>
+            </div>
           </div>
         </div>
 
         {danhSachLoc.length > 0 ? (
-          <div className="project-cards-grid">
-            {danhSachLoc.map((duAn) => (
-              <div key={duAn.id} className="project-item-card">
-                <div className="project-card-top">
-                  <div className="project-avatar">
-                    {duAn.name.charAt(0).toUpperCase()}
+          cheDoXem === 'grid' ? (
+            /* DANH SÁCH DẠNG LƯỚI */
+            <div className="project-cards-grid">
+              {danhSachLoc.map((duAn) => {
+                const phanTram = duAn.tasks?.total > 0 
+                  ? Math.round((duAn.tasks.completed / duAn.tasks.total) * 100) 
+                  : 0;
+
+                return (
+                  <div key={duAn.id} className="project-item-card">
+                    <div className="project-card-top">
+                      <div className="project-avatar">
+                        {duAn.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="project-info">
+                        <h4 className="project-item-name">{duAn.name}</h4>
+                        <div className="project-badges">
+                          <span className={`role-badge ${duAn.role?.toLowerCase() === 'owner' ? 'owner' : 'member'}`}>
+                            {duAn.role || 'Member'}
+                          </span>
+                          <span className={`status-badge ${duAn.status === 'completed' ? 'completed' : 'active'}`}>
+                            {duAn.status === 'completed' ? 'Hoàn thành' : 'Đang làm'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="project-card-body">
+                      {duAn.tasks && (
+                        <div className="progress-section">
+                          <div className="progress-header-info">
+                            <span><CheckSquare size={12} style={{ inlineSize: 'auto' }} /> Tiến độ</span>
+                            <span>{duAn.tasks.completed}/{duAn.tasks.total} Task ({phanTram}%)</span>
+                          </div>
+                          <div className="progress-bar-bg">
+                            <div className="progress-bar-fill" style={{ width: `${phanTram}%` }}></div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="code-box">
+                        <span className="code-label">Mã mời:</span>
+                        <code className="code-value">{duAn.join_code}</code>
+                        <button 
+                          className="btn-copy-code"
+                          onClick={() => saoChepMaMoi(duAn.join_code, duAn.id)}
+                          title="Sao chép mã"
+                        >
+                          {daSaoChep === duAn.id ? <Check size={14} style={{ color: '#34d399' }} /> : <Copy size={14} />}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="project-card-footer">
+                      <button 
+                        className="btn-card-action view" 
+                        onClick={() => dieuHuong(`/projects/${duAn.id}`)}
+                      >
+                        <span>Truy cập</span>
+                        <ExternalLink size={14} />
+                      </button>
+                      <button 
+                        className="btn-card-action delete"
+                        onClick={() => xuLyXoaDuAn(duAn.id, duAn.name)}
+                        title="Xóa dự án"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="project-info">
-                    <h4 className="project-item-name">{duAn.name}</h4>
-                    <div className="project-badges">
+                );
+              })}
+            </div>
+          ) : (
+            /* DANH SÁCH DẠNG LIST */
+            <div className="project-cards-list">
+              {danhSachLoc.map((duAn) => (
+                <div key={duAn.id} className="project-list-row">
+                  <div className="list-row-left">
+                    <div className="project-avatar">{duAn.name.charAt(0).toUpperCase()}</div>
+                    <div>
+                      <h4 className="project-item-name">{duAn.name}</h4>
                       <span className={`role-badge ${duAn.role?.toLowerCase() === 'owner' ? 'owner' : 'member'}`}>
                         {duAn.role || 'Member'}
                       </span>
-                      {duAn.member_count && (
-                        <span className="member-count-badge">{duAn.member_count} thành viên</span>
-                      )}
                     </div>
                   </div>
-                </div>
 
-                <div className="project-card-body">
-                  <div className="code-box">
-                    <span className="code-label">Mã mời:</span>
-                    <code className="code-value">{duAn.join_code}</code>
-                    <button 
-                      className="btn-copy-code"
-                      onClick={() => saoChepMaMoi(duAn.join_code, duAn.id)}
-                      title="Sao chép mã"
-                    >
-                      {daSaoChep === duAn.id ? <Check size={14} className="success-icon" /> : <Copy size={14} />}
+                  <div className="list-row-right">
+                    <div className="code-box">
+                      <code className="code-value">{duAn.join_code}</code>
+                      <button className="btn-copy-code" onClick={() => saoChepMaMoi(duAn.join_code, duAn.id)}>
+                        {daSaoChep === duAn.id ? <Check size={14} style={{ color: '#34d399' }} /> : <Copy size={14} />}
+                      </button>
+                    </div>
+                    <button className="btn-card-action view" onClick={() => dieuHuong(`/projects/${duAn.id}`)}>
+                      <span>Truy cập</span>
+                      <ExternalLink size={14} />
+                    </button>
+                    <button className="btn-card-action delete" onClick={() => xuLyXoaDuAn(duAn.id, duAn.name)}>
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
-                
-                <div className="project-card-footer">
-                  <button 
-                    className="btn-card-action view" 
-                    onClick={() => dieuHuong(`/projects/${duAn.id}`)}
-                  >
-                    <span>Truy cập</span>
-                    <ExternalLink size={14} />
-                  </button>
-                  <button 
-                    className="btn-card-action delete"
-                    onClick={() => xuLyXoaDuAn(duAn.id, duAn.name)}
-                    title="Xóa dự án"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
         ) : (
           <div className="empty-project-state">
             <FolderKanban size={48} className="empty-icon" />
             <p>
               {tuKhoaTimKiem 
                 ? `Không tìm thấy dự án nào khớp với "${tuKhoaTimKiem}"` 
-                : 'Bạn chưa tham gia dự án nào. Hãy tạo dự án mới hoặc nhập mã mời để bắt đầu!'}
+                : 'Chưa có dự án nào trong danh sách. Hãy khởi tạo hoặc tham gia dự án ngay!'}
             </p>
           </div>
         )}

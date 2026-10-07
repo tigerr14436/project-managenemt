@@ -43,7 +43,7 @@
 /* NÚT ĐÓNG POP-UP */
 .auth-modal-close {
   position: absolute;
-  top: 18px;
+  top: 5px;
   right: 18px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -64,47 +64,14 @@
   border-color: rgba(239, 68, 68, 0.3);
 }
 
-/* TIÊU ĐỀ VÀ ICON BRAND */
-.auth-header-brand {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.brand-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  border-radius: 14px;
-  color: #ffffff;
-  margin-bottom: 12px;
-  box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);
-}
-
-.auth-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #f8fafc;
-  margin: 0 0 6px 0;
-  letter-spacing: -0.02em;
-}
-
-.auth-subtitle {
-  font-size: 13px;
-  color: #94a3b8;
-  margin: 0;
-}
-
-/* TAB CHUYỂN ĐỔI */
-.auth-modal-tabs {
+/* TAB CHUYỂN ĐỔI (ĐĂNG NHẬP / ĐĂNG KÝ) */
+.auth-tabs {
   display: flex;
   background-color: #0f172a;
   border: 1px solid rgba(255, 255, 255, 0.06);
   padding: 4px;
   border-radius: 12px;
-  margin-bottom: 22px;
+  margin-bottom: 0px;
 }
 
 .auth-tab-btn {
@@ -130,51 +97,64 @@
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 
+/* TIÊU ĐỀ HỘP THOẠI */
+.auth-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.auth-header h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.02em;
+}
+
+.auth-header p {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* THÔNG BÁO ALERT (SUCCESS / ERROR) */
+.auth-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.auth-alert.error {
+  background-color: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+.auth-alert.success {
+  background-color: rgba(52, 211, 153, 0.15);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: #34d399;
+}
+
 /* FORM VÀ INPUT */
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-group label {
-  font-size: 13px;
-  font-weight: 500;
-  color: #cbd5e1;
-}
-
-.label-with-link {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.forgot-pass-link {
-  font-size: 12px;
-  color: #818cf8;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.forgot-pass-link:hover {
-  color: #a5b4fc;
-  text-decoration: underline;
-}
-
-/* INPUT BỌC ICON */
-.input-wrapper {
+.auth-input-group {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-.input-icon {
+.auth-input-icon {
   position: absolute;
   left: 14px;
   color: #64748b;
@@ -182,7 +162,7 @@
   transition: color 0.2s ease;
 }
 
-.auth-input {
+.auth-input-field {
   width: 100%;
   padding: 11px 14px 11px 42px;
   background-color: #0f172a;
@@ -194,18 +174,17 @@
   transition: all 0.2s ease;
 }
 
-.auth-input::placeholder {
+.auth-input-field::placeholder {
   color: #475569;
 }
 
-.auth-input:focus {
+.auth-input-field:focus {
   border-color: #6366f1;
-  background-color: #0f172a;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
 }
 
-.auth-input:focus + .input-icon,
-.input-wrapper:focus-within .input-icon {
+.auth-input-field:focus + .auth-input-icon,
+.auth-input-group:focus-within .auth-input-icon {
   color: #818cf8;
 }
 
@@ -237,23 +216,41 @@
   transform: translateY(0);
 }
 
-/* DÒNG CHUYỂN HOÁN FORM */
-.auth-switch-text {
-  text-align: center;
-  font-size: 13px;
-  color: #94a3b8;
-  margin-top: 10px;
-  margin-bottom: 0;
+.auth-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
-.auth-link {
+.auth-spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* CHÂN TRANG MODAL (LIÊN KẾT CHUYỂN TAB) */
+.auth-footer {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.auth-footer p {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.auth-footer span {
   color: #818cf8;
   font-weight: 600;
   cursor: pointer;
   transition: color 0.2s ease;
 }
 
-.auth-link:hover {
+.auth-footer span:hover {
   color: #a5b4fc;
   text-decoration: underline;
 }
