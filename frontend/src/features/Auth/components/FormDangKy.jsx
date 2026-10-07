@@ -1,102 +1,85 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { api } from '../../../../lib/api';
 import './Auth.css';
 
-const API_BASE = 'http://127.0.0.1:8000/api';
-const BIEU_THUC_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const BIEU_THUC_MAT_KHAU = /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
-
-export default function FormDangKy() {
-  const dieuHuong = useNavigate();
-  
-  const [duLieuForm, setDuLieuForm] = useState({
-    hoTen: '',
+export default function RegisterForm() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    fullName: '',
     email: '',
-    matKhau: '',
-    xacNhanMatKhau: '',
+    password: '',
+    confirmPassword: '',
   });
 
-  const [danhSachLoi, setDanhSachLoi] = useState({});
-  const [dangGuiDuLieu, setDangGuiDuLieu] = useState(false);
-  const [loiMayChu, setLoiMayChu] = useState('');
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState('');
 
-  const xuLyThayDoi = (suKien) => {
-    const { name, value } = suKien.target;
-    setDuLieuForm((duLieuTruoc) => ({ ...duLieuTruoc, [name]: value }));
-    
-    if (danhSachLoi[name]) {
-      setDanhSachLoi((loiTruoc) => ({ ...loiTruoc, [name]: '' }));
-    }
-    if (loiMayChu) setLoiMayChu('');
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  const kiemTraHopLe = () => {
-    const loiMoi = {};
+  const validateForm = () => {
+    const newErrors = {};
 
-    if (!duLieuForm.hoTen?.trim()) {
-      loiMoi.hoTen = 'Vui lòng nhập họ và tên.';
-    } else if (duLieuForm.hoTen.trim().length < 2) {
-      loiMoi.hoTen = 'Họ và tên phải có ít nhất 2 ký tự.';
+    if (!formData.fullName?.trim()) {
+      newErrors.fullName = 'Vui lòng nhập họ và tên.';
+    } else if (formData.fullName.trim().length < 2) {
+      newErrors.fullName = 'Họ và tên phải có ít nhất 2 ký tự.';
     }
 
-    if (!duLieuForm.email?.trim()) {
-      loiMoi.email = 'Vui lòng nhập email.';
-    } else if (!BIEU_THUC_EMAIL.test(duLieuForm.email)) {
-      loiMoi.email = 'Email không đúng định dạng.';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email?.trim()) {
+      newErrors.email = 'Vui lòng nhập email.';
+    } else if (!emailRegex.test(formData.email)) {
+      newErrors.email = 'Email không đúng định dạng.';
     }
 
-    if (!duLieuForm.matKhau) {
-      loiMoi.matKhau = 'Vui lòng nhập mật khẩu.';
-    } else if (duLieuForm.matKhau.length < 8) {
-      loiMoi.matKhau = 'Mật khẩu phải từ 8 ký tự trở lên.';
-    } else if (!BIEU_THUC_MAT_KHAU.test(duLieuForm.matKhau)) {
-      loiMoi.matKhau = 'Mật khẩu phải chứa chữ hoa, chữ thường và số.';
+    if (!formData.password) {
+      newErrors.password = 'Vui lòng nhập mật khẩu.';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Mật khẩu phải từ 8 ký tự trở lên.';
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Mật khẩu phải chứa chữ hoa, chữ thường và số.';
     }
 
-    if (!duLieuForm.xacNhanMatKhau) {
-      loiMoi.xacNhanMatKhau = 'Vui lòng xác nhận mật khẩu.';
-    } else if (duLieuForm.xacNhanMatKhau !== duLieuForm.matKhau) {
-      loiMoi.xacNhanMatKhau = 'Mật khẩu xác nhận không khớp.';
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu.';
+    } else if (formData.confirmPassword !== formData.password) {
+      newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp.';
     }
 
-    return loiMoi;
+    return newErrors;
   };
 
-  const xuLyDangKy = async (suKien) => {
-    suKien.preventDefault();
-    setLoiMayChu('');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setServerError('');
+    const validationErrors = validateForm();
 
-    const loiKiemTra = kiemTraHopLe();
-    if (Object.keys(loiKiemTra).length > 0) {
-      setDanhSachLoi(loiKiemTra);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       return;
     }
 
-    setDangGuiDuLieu(true);
+    setIsSubmitting(true);
 
     try {
-      // ===== GỌI API THẬT TỚI BACKEND =====
-      const phanHoi = await fetch(`${API_BASE}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: duLieuForm.hoTen,
-          email: duLieuForm.email,
-          password: duLieuForm.matKhau,
-        }),
+      // Backend nhận field tên "name", nên map fullName -> name khi gửi đi
+      await api.post('/auth/register', {
+        name: formData.fullName,
+        email: formData.email,
+        password: formData.password,
       });
 
-      if (!phanHoi.ok) {
-        const duLieuLoi = await phanHoi.json().catch(() => null);
-        throw new Error(duLieuLoi?.detail || 'Không thể tạo tài khoản. Vui lòng thử lại.');
-      }
-
-      alert('Đăng ký tài khoản thành công!');
-      dieuHuong('/dang-nhap');
-    } catch (loi) {
-      setLoiMayChu(loi.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      navigate('/login');
+    } catch (err) {
+      setServerError(err.message || 'Đăng ký thất bại. Vui lòng thử lại.');
     } finally {
-      setDangGuiDuLieu(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -104,26 +87,21 @@ export default function FormDangKy() {
     <div className="auth-card">
       <h2 className="auth-title">Tạo tài khoản</h2>
 
-      {/* Thông báo lỗi trả về từ máy chủ */}
-      {loiMayChu && (
-        <p className="error-text" style={{ marginBottom: 12, textAlign: 'center' }}>
-          {loiMayChu}
-        </p>
-      )}
+      {serverError && <p className="error-text" style={{ marginBottom: 12 }}>{serverError}</p>}
 
-      <form onSubmit={xuLyDangKy} noValidate>
+      <form onSubmit={handleSubmit} noValidate>
         <div className="input-group">
-          <label className="input-label" htmlFor="hoTen">Họ và tên</label>
+          <label className="input-label" htmlFor="fullName">Họ và tên</label>
           <input
-            id="hoTen"
+            id="fullName"
             type="text"
-            name="hoTen"
+            name="fullName"
             placeholder="Nguyễn Văn A"
-            value={duLieuForm.hoTen}
-            onChange={xuLyThayDoi}
-            className={`input-field ${danhSachLoi.hoTen ? 'error' : ''}`}
+            value={formData.fullName}
+            onChange={handleChange}
+            className={`input-field ${errors.fullName ? 'error' : ''}`}
           />
-          {danhSachLoi.hoTen && <p className="error-text">{danhSachLoi.hoTen}</p>}
+          {errors.fullName && <p className="error-text">{errors.fullName}</p>}
         </div>
 
         <div className="input-group">
@@ -133,49 +111,49 @@ export default function FormDangKy() {
             type="email"
             name="email"
             placeholder="name@example.com"
-            value={duLieuForm.email}
-            onChange={xuLyThayDoi}
-            className={`input-field ${danhSachLoi.email ? 'error' : ''}`}
+            value={formData.email}
+            onChange={handleChange}
+            className={`input-field ${errors.email ? 'error' : ''}`}
           />
-          {danhSachLoi.email && <p className="error-text">{danhSachLoi.email}</p>}
+          {errors.email && <p className="error-text">{errors.email}</p>}
         </div>
 
         <div className="input-group">
-          <label className="input-label" htmlFor="matKhau">Mật khẩu</label>
+          <label className="input-label" htmlFor="password">Mật khẩu</label>
           <input
-            id="matKhau"
+            id="password"
             type="password"
-            name="matKhau"
+            name="password"
             placeholder="••••••••"
-            value={duLieuForm.matKhau}
-            onChange={xuLyThayDoi}
-            className={`input-field ${danhSachLoi.matKhau ? 'error' : ''}`}
+            value={formData.password}
+            onChange={handleChange}
+            className={`input-field ${errors.password ? 'error' : ''}`}
           />
-          {danhSachLoi.matKhau && <p className="error-text">{danhSachLoi.matKhau}</p>}
+          {errors.password && <p className="error-text">{errors.password}</p>}
         </div>
 
         <div className="input-group">
-          <label className="input-label" htmlFor="xacNhanMatKhau">Xác nhận mật khẩu</label>
+          <label className="input-label" htmlFor="confirmPassword">Xác nhận mật khẩu</label>
           <input
-            id="xacNhanMatKhau"
+            id="confirmPassword"
             type="password"
-            name="xacNhanMatKhau"
+            name="confirmPassword"
             placeholder="••••••••"
-            value={duLieuForm.xacNhanMatKhau}
-            onChange={xuLyThayDoi}
-            className={`input-field ${danhSachLoi.xacNhanMatKhau ? 'error' : ''}`}
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            className={`input-field ${errors.confirmPassword ? 'error' : ''}`}
           />
-          {danhSachLoi.xacNhanMatKhau && <p className="error-text">{danhSachLoi.xacNhanMatKhau}</p>}
+          {errors.confirmPassword && <p className="error-text">{errors.confirmPassword}</p>}
         </div>
 
-        <button type="submit" disabled={dangGuiDuLieu} className="btn-submit">
-          {dangGuiDuLieu ? 'Đang tạo tài khoản...' : 'Đăng ký'}
+        <button type="submit" disabled={isSubmitting} className="btn-submit">
+          {isSubmitting ? 'Đang tạo tài khoản...' : 'Đăng ký'}
         </button>
       </form>
 
       <p className="switch-text">
         Đã có tài khoản?{' '}
-        <Link to="/dang-nhap" className="switch-btn-link">
+        <Link to="/login" className="switch-btn-link">
           Đăng nhập
         </Link>
       </p>

@@ -1,6 +1,6 @@
 """
 File chính chạy FastAPI server.
-Đặt file này trong thư mục /backend, cùng cấp với database.py, models.py, auth_utils.py, .env
+Đặt file này trong thư mục /backend, cùng cấp với database.py, models.py, auth_utils.py, auth_deps.py, .env
 
 Chạy server bằng lệnh:
     uvicorn main:app --reload --port 8000
@@ -8,6 +8,8 @@ Chạy server bằng lệnh:
 Sau đó mở trình duyệt vào:
     http://localhost:8000/docs
 để test API bằng giao diện Swagger.
+Để test endpoint cần đăng nhập (🔒): bấm nút "Authorize" ở góc trên bên phải Swagger,
+dán access_token lấy được từ /api/auth/login vào.
 """
 
 import uuid
@@ -19,9 +21,10 @@ from sqlalchemy import select
 from database import engine, Base, get_db
 from models import (
     Task, TaskCreate, TaskUpdate, TaskOut,
-    User, UserRegister, UserLogin, UserOut, TokenOut,
+    User, UserRegister, UserLogin, UserUpdate, UserOut, TokenOut,
 )
 from auth_utils import hash_password, verify_password, create_access_token
+from auth_deps import get_current_user
 
 app = FastAPI(title="Quản lý công việc & dự án CNTT API")
 
@@ -46,7 +49,6 @@ async def on_startup():
 
 @app.post("/api/auth/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
-    # Kiểm tra email đã tồn tại chưa
     result = await db.execute(select(User).where(User.email == payload.email))
     if result.scalar_one_or_none() is not None:
         raise HTTPException(status_code=400, detail="Email này đã được đăng ký")
@@ -72,6 +74,28 @@ async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
 
     token = create_access_token({"sub": str(user.id)})
     return TokenOut(access_token=token)
+
+
+# ================= USERS (🔒 cần đăng nhập) =================
+
+@app.get("/api/users/me", response_model=UserOut)
+async def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@app.put("/api/users/me", response_model=UserOut)
+async def update_me(
+    payload: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    update_data = payload.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(current_user, field, value)
+
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
 
 
 # ================= TASKS =================
