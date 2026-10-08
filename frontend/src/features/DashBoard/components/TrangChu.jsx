@@ -1,15 +1,13 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useAuthModal } from '../../../context/AuthContext';
 import './TrangChu.css';
 
 export default function TrangChu() {
-  const dieuHuong = useNavigate();
+  // Lấy trực tiếp hàm mở modal từ Context
+  const { xulyMoAuthModal } = useAuthModal();
 
   return (
     <div className="khung-trang-chu">
-      
-
-      {/* Nội dung chào mừng chính */}
       <main className="khu-vuc-chao-mung">
         <span className="nhan-noi-bat">Nền tảng Quản lý Dự án IT</span>
         
@@ -24,21 +22,22 @@ export default function TrangChu() {
 
         <div className="nhom-nut-keu-goi">
           <button 
+            type="button"
             className="nut-chinh nut-keu-goi-chinh" 
-            onClick={() => dieuHuong('/dang-ky')}
+            onClick={xulyMoAuthModal}
           >
             Bắt đầu miễn phí
           </button>
           <button 
+            type="button"
             className="nut-vien nut-keu-goi-phu" 
-            onClick={() => dieuHuong('/dang-nhap')}
+            onClick={xulyMoAuthModal}
           >
             Đã có tài khoản?
           </button>
         </div>
       </main>
 
-      {/* Footter chân trang */}
       <footer className="chan-trang">
         &copy; {new Date().getFullYear()} DevTask. Hệ thống quản lý dự án CNTT.
       </footer>

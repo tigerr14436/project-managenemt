@@ -1,11 +1,11 @@
 :root {
-  --mau-nen-trang: #0F172A;
-  --mau-nen-the: #1E293B;
+  --mau-nen-trang: #0f172a;
+  --mau-nen-the: #1e293b;
   --mau-duong-vien: #334155;
-  --mau-chinh: #6366F1;
-  --mau-chinh-hover: #4F46E5;
-  --mau-chu-chinh: #F8FAFC;
-  --mau-chu-mo: #94A3B8;
+  --mau-chinh: #6366f1;
+  --mau-chinh-hover: #4f46e5;
+  --mau-chu-chinh: #f8fafc;
+  --mau-chu-mo: #94a3b8;
 }
 
 body {
@@ -13,69 +13,20 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--mau-nen-trang);
   color: var(--mau-chu-chinh);
-  overflow-x: hidden; /* Chống vỡ khung theo chiều ngang */
+  overflow-x: hidden;
 }
 
+/* KHUNG TRANG CHỦ MỞ RỘNG 100% TOÀN MÀN HÌNH */
 .khung-trang-chu {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-}
-
-/* Header Navbar */
-.thanh-dau-trang {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.25rem 4rem;
-  border-bottom: 1px solid var(--mau-duong-vien);
+  min-height: calc(100vh - 64px);
+  width: 100%;
+  box-sizing: border-box;
   background-color: var(--mau-nen-trang);
 }
 
-.logo-thuong-hieu {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--mau-chinh);
-  letter-spacing: -0.5px;
-}
-
-.nhom-nut-dieu-huong {
-  display: flex;
-  gap: 1rem;
-}
-
-.nut-vien {
-  padding: 0.6rem 1.25rem;
-  background-color: transparent;
-  border: 1px solid var(--mau-duong-vien);
-  color: var(--mau-chu-chinh);
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.nut-vien:hover {
-  background-color: var(--mau-nen-the);
-  border-color: var(--mau-chu-mo);
-}
-
-.nut-chinh {
-  padding: 0.6rem 1.25rem;
-  background-color: var(--mau-chinh);
-  border: none;
-  color: #ffffff;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.nut-chinh:hover {
-  background-color: var(--mau-chinh-hover);
-}
-
-/* Khu vực Hero giới thiệu */
+/* KHU VỰC HERO BỎ GIỚI HẠN MAX-WIDTH ĐỂ MỞ RỘNG FULL CHIỀU RỘNG */
 .khu-vuc-chao-mung {
   flex: 1;
   display: flex;
@@ -84,98 +35,109 @@ body {
   align-items: center;
   text-align: center;
   padding: 4rem 2rem;
-  max-width: 800px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100% !important; /* Mở rộng toàn bộ chiều rộng */
   box-sizing: border-box;
 }
 
 .nhan-noi-bat {
   background-color: rgba(99, 102, 241, 0.1);
   color: var(--mau-chinh);
-  padding: 0.4rem 1rem;
+  padding: 0.5rem 1.25rem;
   border-radius: 2rem;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   font-weight: 600;
   margin-bottom: 1.5rem;
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.25);
 }
 
+/* TĂNG KÍCH THƯỚC TIÊU ĐỀ TRẢI RỘNG ĐẸP MẮT */
 .tieu-de-lon {
-  font-size: 3.25rem;
+  font-size: 4rem;
   font-weight: 800;
-  line-height: 1.2;
-  margin-bottom: 1.25rem;
+  line-height: 1.15;
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.03em;
+  max-width: 1100px; /* Bóp nhẹ tiêu đề cho cân đối chữ */
 }
 
 .doan-van-mota {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   color: var(--mau-chu-mo);
   line-height: 1.6;
   margin-bottom: 2.5rem;
+  max-width: 850px;
 }
 
 .nhom-nut-keu-goi {
   display: flex;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .nut-keu-goi-chinh,
 .nut-keu-goi-phu {
-  padding: 0.875rem 2rem;
+  padding: 0.875rem 2.25rem;
   font-size: 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-/* Footer */
+.nut-keu-goi-chinh {
+  background-color: var(--mau-chinh);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+.nut-keu-goi-chinh:hover {
+  background-color: var(--mau-chinh-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+}
+
+.nut-keu-goi-phu {
+  background-color: transparent;
+  border: 1px solid var(--mau-duong-vien);
+  color: var(--mau-chu-chinh);
+}
+
+.nut-keu-goi-phu:hover {
+  background-color: var(--mau-nen-the);
+  border-color: var(--mau-chu-mo);
+}
+
+/* FOOTER RỘNG FULL MÀN HÌNH */
 .chan-trang {
+  width: 100%;
   text-align: center;
   padding: 1.5rem;
   border-top: 1px solid var(--mau-duong-vien);
   color: var(--mau-chu-mo);
   font-size: 0.875rem;
+  background-color: var(--mau-nen-trang);
+  box-sizing: border-box;
 }
 
-/* ===================================================
-   CẤU HÌNH TƯƠNG THÍCH ĐA THIẾT BỊ (RESPONSIVE)
-   =================================================== */
-
+/* RESPONSIVE */
 @media (max-width: 768px) {
-  .thanh-dau-trang {
-    padding: 1rem 1.5rem; 
-  }
-
   .tieu-de-lon {
-    font-size: 2.25rem; 
+    font-size: 2.75rem;
   }
-
   .doan-van-mota {
-    font-size: 1rem;
-  }
-
-  .khu-vuc-chao-mung {
-    padding: 3rem 1.5rem;
+    font-size: 1.05rem;
   }
 }
 
 @media (max-width: 480px) {
-  .logo-thuong-hieu {
-    font-size: 1.25rem;
-  }
-
-  .nhom-nut-dieu-huong .nut-vien,
-  .nhom-nut-dieu-huong .nut-chinh {
-    padding: 0.5rem 0.875rem;
-    font-size: 0.875rem;
-  }
-
   .tieu-de-lon {
-    font-size: 1.85rem; 
+    font-size: 2.1rem;
   }
-
   .nhom-nut-keu-goi {
     flex-direction: column;
     width: 100%;
   }
-
   .nut-keu-goi-chinh,
   .nut-keu-goi-phu {
     width: 100%;

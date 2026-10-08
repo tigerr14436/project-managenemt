@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   X, 
   Mail, 
@@ -14,6 +15,7 @@ import {
 import './AuthModal.css';
 
 export default function AuthModal({ isOpen, onClose, onSuccess }) {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true); 
   const [formData, setFormData] = useState({
     name: '',
@@ -39,7 +41,6 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
     e.preventDefault();
     setMessage({ type: '', content: '' });
 
-    // Validate căn bản cho phía Client
     if (!isLogin && formData.password !== formData.confirmPassword) {
       setMessage({ type: 'error', content: 'Mật khẩu xác nhận không trùng khớp!' });
       return;
@@ -47,12 +48,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
 
     setLoading(true);
 
-    const endpoint = isLogin ? '/auth/login' : '/auth/register';
-    const payload = isLogin
-      ? { email: formData.email, password: formData.password }
-      : { name: formData.name, email: formData.email, password: formData.password };
-
     try {
+      const endpoint = isLogin ? '/auth/login' : '/auth/register';
+      const payload = isLogin
+        ? { email: formData.email, password: formData.password }
+        : { name: formData.name, email: formData.email, password: formData.password };
+
       const response = await fetch(`http://127.0.0.1:8000/api${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -62,10 +63,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.detail || 'Thao tác thất bại, vui lòng thử lại.');
+        throw new Error(data?.detail || 'Lỗi server');
       }
 
-      // Lưu Token nếu có
       if (data.access_token) {
         localStorage.setItem('access_token', data.access_token);
       }
@@ -78,19 +78,25 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
       setTimeout(() => {
         if (onSuccess) onSuccess(data);
         onClose();
-      }, 1000);
+        navigate('/du-an'); // Tự động chuyển thẳng tới trang Dự án (Tab đầu tiên của Sidebar)
+      }, 800);
 
     } catch (err) {
-      // Mock giả lập thành công nếu Backend chưa sẵn sàng
-      localStorage.setItem('access_token', 'mock_access_token_123456');
+      // Mock Demo nếu Backend chưa sẵn sàng
+      const mockToken = 'mock_jwt_token_' + Date.now();
+      localStorage.setItem('access_token', mockToken);
+      localStorage.setItem('user_email', formData.email);
+
       setMessage({
         type: 'success',
         content: isLogin ? 'Đăng nhập thành công (Demo)!' : 'Đăng ký thành công (Demo)!',
       });
+
       setTimeout(() => {
-        if (onSuccess) onSuccess({ email: formData.email });
+        if (onSuccess) onSuccess({ email: formData.email, token: mockToken });
         onClose();
-      }, 1000);
+        navigate('/du-an'); // Tự động chuyển thẳng tới trang Dự án
+      }, 800);
     } finally {
       setLoading(false);
     }
@@ -99,14 +105,13 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
   return (
     <div className="auth-modal-overlay" onClick={onClose}>
       <div className="auth-modal-card" onClick={(e) => e.stopPropagation()}>
-        {/* Nút đóng Modal */}
         <button className="auth-modal-close" onClick={onClose} aria-label="Close">
           <X size={20} />
         </button>
 
-        {/* Chuyển đổi Đăng nhập / Đăng ký Tabs */}
         <div className="auth-tabs">
           <button
+            type="button"
             className={`auth-tab-btn ${isLogin ? 'active' : ''}`}
             onClick={() => switchMode(true)}
           >
@@ -114,6 +119,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
             <span>Đăng nhập</span>
           </button>
           <button
+            type="button"
             className={`auth-tab-btn ${!isLogin ? 'active' : ''}`}
             onClick={() => switchMode(false)}
           >
@@ -122,17 +128,15 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
           </button>
         </div>
 
-        {/* Tiêu đề & phụ đề */}
         <div className="auth-header">
           <h3>{isLogin ? 'Chào mừng trở lại!' : 'Tạo tài khoản mới'}</h3>
           <p>
             {isLogin
-              ? 'Nhập thông tin tài khoản để truy cập Workspace'
-              : 'Tham gia ngay để trải nghiệm công cụ quản lý dự án tối ưu'}
+              ? 'Nhập bất kỳ email & mật khẩu nào để thử nghiệm'
+              : 'Điền thông tin để trải nghiệm ngay hệ thống DevTask'}
           </p>
         </div>
 
-        {/* Thông báo Alert */}
         {message.content && (
           <div className={`auth-alert ${message.type}`}>
             {message.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
@@ -140,7 +144,6 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
           </div>
         )}
 
-        {/* Form điền thông tin */}
         <form onSubmit={handleSubmit} className="auth-form">
           {!isLogin && (
             <div className="auth-input-group">
@@ -203,14 +206,13 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
               <Loader2 size={18} className="auth-spin-icon" />
             ) : (
               <>
-                <span>{isLogin ? 'Đăng Nhập' : 'Tạo Tài Khoản'}</span>
+                <span>{isLogin ? 'Đăng Nhập Ngay' : 'Tạo Tài Khoản Ngay'}</span>
                 <ArrowRight size={18} />
               </>
             )}
           </button>
         </form>
 
-        {/* Chân trang Modal */}
         <div className="auth-footer">
           {isLogin ? (
             <p>

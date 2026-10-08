@@ -1,127 +1,66 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  FolderKanban, 
-  Building2, 
-  LogIn, 
-  UserPlus, 
-  LogOut, 
-  Menu, 
-  Zap 
-} from 'lucide-react';
-import AuthModal from '../features/Auth/components/AuthModal';
-import './Navigation.css';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Header from "./Header";
+import Sidebar from "./Sidebar";
+import AuthModal from "../features/Auth/components/AuthModal";
+import "./Navigation.css";
 
-export default function Navigation({ children }) {
-  const [moSidebar, setMoSidebar] = useState(false);
+export default function Navigation({ children, daDangNhap, setDaDangNhap }) {
+  const [moSidebar, setMoSidebar] = useState(daDangNhap);
   const [moAuthModal, setMoAuthModal] = useState(false);
-
   const dieuHuong = useNavigate();
-  const viTriHienTai = useLocation();
-
-  // KIỂM TRA TRẠNG THÁI ĐĂNG NHẬP
-  const daDangNhap = Boolean(localStorage.getItem('access_token'));
 
   const xulyDangXuat = () => {
-    localStorage.removeItem('access_token');
-    dieuHuong('/');
+    localStorage.removeItem("access_token");
+    setDaDangNhap(false);
+    setMoSidebar(false);
+    dieuHuong("/", { replace: true });
   };
 
   const xulyMoAuthModal = () => {
     setMoAuthModal(true);
-    setMoSidebar(false);
+  };
+
+  const handleAuthSuccess = () => {
+    setDaDangNhap(true);
+    setMoSidebar(true);
+    setMoAuthModal(false);
+    dieuHuong("/du-an", { replace: true });
   };
 
   return (
     <div className="layout-wrapper">
-      {/* HEADER CỐ ĐỊNH TRÊN CÙNG */}
-      <header className="main-header">
-        <div className="header-left">
-          <button className="menu-toggle-btn" onClick={() => setMoSidebar(!moSidebar)}>
-            <Menu size={20} />
-          </button>
-          <div className="brand-logo" onClick={() => dieuHuong('/')}>
-            <Zap size={22} className="brand-icon" />
-            <span>DevTask</span>
-          </div>
-        </div>
-
-        {/* NÚT ĐĂNG NHẬP / ĐĂNG KÝ HOẶC ĐĂNG XUẤT TÙY TRẠNG THÁI */}
-        <div className="header-right">
-          {daDangNhap ? (
-            <button onClick={xulyDangXuat} className="logout-btn">
-              <LogOut size={16} />
-              <span>Đăng xuất</span>
-            </button>
-          ) : (
-            <div className="header-auth-btns">
-              <button className="header-btn login-btn" onClick={xulyMoAuthModal}>
-                <LogIn size={16} />
-                <span>Đăng nhập</span>
-              </button>
-              <button className="header-btn register-btn" onClick={xulyMoAuthModal}>
-                <UserPlus size={16} />
-                <span>Đăng ký</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
+      <Header
+        moSidebar={moSidebar}
+        setMoSidebar={setMoSidebar}
+        daDangNhap={daDangNhap}
+        xulyMoAuthModal={xulyMoAuthModal}
+        xulyDangXuat={xulyDangXuat}
+      />
 
       <div className="main-body">
-        {moSidebar && (
-          <div className="sidebar-overlay" onClick={() => setMoSidebar(false)}></div>
-        )}
+        <Sidebar
+          moSidebar={moSidebar}
+          setMoSidebar={setMoSidebar}
+          daDangNhap={daDangNhap}
+        />
 
-        {/* SIDEBAR CỐ ĐỊNH BÊN TRÁI */}
-        <aside className={`main-sidebar ${moSidebar ? 'open' : ''}`}>
-          <nav className="sidebar-nav">
-            {!daDangNhap ? (
-              /* CHƯA ĐĂNG NHẬP: CHỈ HIỆN TRANG CHỦ */
-              <Link
-                to="/"
-                onClick={() => setMoSidebar(false)}
-                className={`nav-item ${viTriHienTai.pathname === '/' ? 'active' : ''}`}
-              >
-                <Home size={18} className="nav-icon" />
-                <span>Trang chủ</span>
-              </Link>
-            ) : (
-              /* ĐÃ ĐĂNG NHẬP: ẨN TRANG CHỦ, HIỆN 2 MỤC CÒN LẠI */
-              <>
-                <Link
-                  to="/du-an"
-                  onClick={() => setMoSidebar(false)}
-                  className={`nav-item ${viTriHienTai.pathname === '/du-an' ? 'active' : ''}`}
-                >
-                  <FolderKanban size={18} className="nav-icon" />
-                  <span>Quản lý Dự án</span>
-                </Link>
-
-                <Link
-                  to="/workspace"
-                  onClick={() => setMoSidebar(false)}
-                  className={`nav-item ${viTriHienTai.pathname === '/workspace' ? 'active' : ''}`}
-                >
-                  <Building2 size={18} className="nav-icon" />
-                  <span>Workspace & Nhóm</span>
-                </Link>
-              </>
-            )}
-          </nav>
-        </aside>
-
-        {/* NỘI DUNG CHÍNH */}
-        <main className="main-content">{children}</main>
+        <main className={`main-content ${!daDangNhap ? "no-sidebar" : ""}`}>
+          {React.Children.map(children, (child) => {
+            if (React.isValidElement(child)) {
+              return React.cloneElement(child, {
+                xulyMoAuthModal: xulyMoAuthModal,
+              });
+            }
+            return child;
+          })}
+        </main>
       </div>
 
       <AuthModal
         isOpen={moAuthModal}
         onClose={() => setMoAuthModal(false)}
-        onSuccess={() => {
-          window.location.reload();
-        }}
+        onSuccess={handleAuthSuccess}
       />
     </div>
   );
