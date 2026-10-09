@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  X, 
-  Mail, 
-  Lock, 
-  User, 
-  ArrowRight, 
-  Loader2, 
-  AlertCircle, 
+import {
+  X,
+  Mail,
+  Lock,
+  User,
+  ArrowRight,
+  Loader2,
+  AlertCircle,
   CheckCircle2,
   LogIn,
   UserPlus
@@ -16,7 +16,7 @@ import './AuthModal.css';
 
 export default function AuthModal({ isOpen, onClose, onSuccess }) {
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true); 
+  const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -48,58 +48,68 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
 
     setLoading(true);
 
-    try {
-      const endpoint = isLogin ? '/auth/login' : '/auth/register';
-      const payload = isLogin
-        ? { email: formData.email, password: formData.password }
-        : { name: formData.name, email: formData.email, password: formData.password };
+    const endpoint = isLogin ? '/auth/login' : '/auth/register';
+    const payload = isLogin
+      ? { email: formData.email, password: formData.password }
+      : { name: formData.name, email: formData.email, password: formData.password };
 
-      const response = await fetch(`http://127.0.0.1:8000/api${endpoint}`, {
+    let response;
+    try {
+      // Bước 1: gửi request. Nếu fetch ở đây ném lỗi (catch bên dưới),
+      // nghĩa là KHÔNG kết nối được tới server (backend chưa chạy, sai port...)
+      response = await fetch(`http://127.0.0.1:8000/api${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.detail || 'Lỗi server');
-      }
-
-      if (data.access_token) {
-        localStorage.setItem('access_token', data.access_token);
-      }
-
+    } catch (networkErr) {
+      // Chỉ rơi vào đây khi KHÔNG kết nối được server — lỗi mạng thật sự,
+      // không phải do sai email/mật khẩu. Không tự coi là thành công.
       setMessage({
-        type: 'success',
-        content: isLogin ? 'Đăng nhập thành công!' : 'Đăng ký tài khoản thành công!',
+        type: 'error',
+        content: 'Không thể kết nối tới server. Kiểm tra backend đã chạy ở cổng 8000 chưa.',
       });
+      setLoading(false);
+      return;
+    }
 
-      setTimeout(() => {
+    // Bước 2: server ĐÃ phản hồi — có thể là thành công hoặc lỗi nghiệp vụ thật
+    // (sai mật khẩu, email trùng...). Những trường hợp này KHÔNG được coi là "demo thành công".
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      setMessage({
+        type: 'error',
+        content: data?.detail || 'Email hoặc mật khẩu không đúng.',
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Chỉ tới đây khi server xác nhận thành công thật (status 2xx)
+    if (isLogin && data?.access_token) {
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('user_email', formData.email);
+    }
+
+    setMessage({
+      type: 'success',
+      content: isLogin ? 'Đăng nhập thành công!' : 'Đăng ký tài khoản thành công!',
+    });
+
+    setLoading(false);
+
+    setTimeout(() => {
+      if (isLogin) {
         if (onSuccess) onSuccess(data);
         onClose();
-        navigate('/du-an'); // Tự động chuyển thẳng tới trang Dự án (Tab đầu tiên của Sidebar)
-      }, 800);
-
-    } catch (err) {
-      // Mock Demo nếu Backend chưa sẵn sàng
-      const mockToken = 'mock_jwt_token_' + Date.now();
-      localStorage.setItem('access_token', mockToken);
-      localStorage.setItem('user_email', formData.email);
-
-      setMessage({
-        type: 'success',
-        content: isLogin ? 'Đăng nhập thành công (Demo)!' : 'Đăng ký thành công (Demo)!',
-      });
-
-      setTimeout(() => {
-        if (onSuccess) onSuccess({ email: formData.email, token: mockToken });
-        onClose();
-        navigate('/du-an'); // Tự động chuyển thẳng tới trang Dự án
-      }, 800);
-    } finally {
-      setLoading(false);
-    }
+        navigate('/du-an');
+      } else {
+        // Đăng ký xong KHÔNG có sẵn access_token (backend chỉ trả về
+        // thông tin user) — chuyển sang tab đăng nhập thay vì vào thẳng app.
+        switchMode(true);
+      }
+    }, 800);
   };
 
   return (
@@ -132,8 +142,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
           <h3>{isLogin ? 'Chào mừng trở lại!' : 'Tạo tài khoản mới'}</h3>
           <p>
             {isLogin
-              ? 'Nhập bất kỳ email & mật khẩu nào để thử nghiệm'
-              : 'Điền thông tin để trải nghiệm ngay hệ thống DevTask'}
+              ? 'Đăng nhập bằng email và mật khẩu đã đăng ký'
+              : 'Điền thông tin để tạo tài khoản DevTask'}
           </p>
         </div>
 
