@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, Text, DateTime, func
+from sqlalchemy import String, Text, DateTime, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from pydantic import BaseModel, Field, EmailStr
@@ -29,15 +29,49 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    owner_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    join_code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(50), default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ProjectMember(Base):
+    """Bảng trung gian: ai thuộc dự án nào, vai trò gì (owner/member)"""
+    __tablename__ = "project_members"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(50), default="member")  # owner | member
+
+
 class Task(Base):
     __tablename__ = "tasks"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
+    )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(50), default="todo")
+    status: Mapped[str] = mapped_column(String(50), default="todo")  # todo|in_progress|review|done
     priority: Mapped[str] = mapped_column(String(50), default="medium")
     deadline: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     assignee: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -79,15 +113,45 @@ class TokenOut(BaseModel):
     token_type: str = "bearer"
 
 
+# ========== SCHEMA CHO PROJECTS (Pydantic) ==========
+
+class ProjectCreate(BaseModel):
+    name: str = Field(..., min_length=1)
+
+
+class ProjectJoinIn(BaseModel):
+    join_code: str = Field(..., min_length=1)
+
+
+class TaskSummary(BaseModel):
+    completed: int
+    total: int
+
+
+class ProjectOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    join_code: str
+    status: str
+    role: str
+    member_count: int
+    tasks: TaskSummary
+
+
 # ========== SCHEMA CHO TASKS (Pydantic) ==========
 
+ALLOWED_STATUS = {"todo", "in_progress", "review", "done"}
+ALLOWED_PRIORITY = {"low", "medium", "high"}
+
+
 class TaskBase(BaseModel):
+    project_id: uuid.UUID
     title: str = Field(..., min_length=1, description="Tên công việc")
     description: Optional[str] = Field(None, description="Mô tả chi tiết")
-    status: str = Field(default="todo", description="todo | in_progress | done")
-    priority: str = Field(default="medium", description="low | medium | high")
-    deadline: Optional[datetime] = Field(None, description="Hạn hoàn thành")
-    assignee: Optional[str] = Field(None, description="Tên người phụ trách")
+    status: str = Field(default="todo")
+    priority: str = Field(default="medium")
+    deadline: Optional[datetime] = Field(None)
+    assignee: Optional[str] = Field(None)
 
 
 class TaskCreate(TaskBase):
@@ -103,8 +167,15 @@ class TaskUpdate(BaseModel):
     assignee: Optional[str] = None
 
 
-class TaskOut(TaskBase):
+class TaskOut(BaseModel):
     id: uuid.UUID
+    project_id: uuid.UUID
+    title: str
+    description: Optional[str]
+    status: str
+    priority: str
+    deadline: Optional[datetime]
+    assignee: Optional[str]
     created_at: datetime
     updated_at: datetime
 
