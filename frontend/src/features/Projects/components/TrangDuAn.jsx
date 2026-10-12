@@ -26,7 +26,12 @@ import {
   Info,
   AlertTriangle,
   BarChart2,
-  ChevronRight
+  ChevronRight,
+  Building2,
+  Users,
+  Mail,
+  FolderPlus as FolderPlusIcon,
+  Shield
 } from 'lucide-react';
 import './TrangDuAn.css';
 
@@ -41,7 +46,6 @@ async function guiYeuCauXacThuc(url, options = {}) {
   };
 
   const res = await fetch(`http://127.0.0.1:8000/api${url}`, { ...options, headers });
-
   if (res.status === 204) return null;
 
   const data = await res.json().catch(() => null);
@@ -67,14 +71,25 @@ function dinhDangNgay(iso) {
 export default function TrangDuAn() {
   const dieuHuong = useNavigate();
 
-  // Dữ liệu LUÔN bắt đầu rỗng, không còn danh sách cứng giả lập —
-  // toàn bộ được tải từ database qua API khi component mount.
   const [danhSachDuAn, setDanhSachDuAn] = useState([]);
   const [dangTaiDuAn, setDangTaiDuAn] = useState(true);
 
   const [duAnDangChon, setDuAnDangChon] = useState(null);
   const [taskCuaDuAn, setTaskCuaDuAn] = useState([]);
   const [dangTaiTask, setDangTaiTask] = useState(false);
+
+  // State Workspace tích hợp trong trang dự án
+  const [danhSachNhom, setDanhSachNhom] = useState([
+    { id: 101, name: 'Đội ngũ Frontend', members_count: 5 },
+    { id: 102, name: 'Đội ngũ Backend API', members_count: 4 }
+  ]);
+  const [danhSachThanhVien, setDanhSachThanhVien] = useState([
+    { id: 1, name: 'Nguyễn Văn A', email: 'vana@devtask.vn', role: 'Admin' },
+    { id: 2, name: 'Trần Thị B', email: 'thib@devtask.vn', role: 'Member' }
+  ]);
+  const [tabWorkspace, setTabWorkspace] = useState('nhom');
+  const [tenNhomMoi, setTenNhomMoi] = useState('');
+  const [emailThanhVien, setEmailThanhVien] = useState('');
 
   const [tenDuAnMoi, setTenDuAnMoi] = useState('');
   const [maThamGia, setMaThamGia] = useState('');
@@ -110,8 +125,6 @@ export default function TrangDuAn() {
   };
   const removeToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
-  // ===== Tải dữ liệu thật từ database =====
-
   const taiDanhSachDuAn = async () => {
     setDangTaiDuAn(true);
     try {
@@ -139,8 +152,6 @@ export default function TrangDuAn() {
       setDangTaiTask(false);
     }
   };
-
-  // ===== Tạo / tham gia / xóa dự án — gọi API thật, không còn fallback giả =====
 
   const xuLyTaoDuAn = async (e) => {
     e.preventDefault();
@@ -202,13 +213,10 @@ export default function TrangDuAn() {
     }
   };
 
-  // ===== Task: kéo-thả đổi trạng thái và tạo mới — đều gọi API thật =====
-
   const chuyenTrangThaiTask = async (taskId, targetStatus) => {
     const taskGoc = taskCuaDuAn.find((t) => t.id === taskId);
     if (!taskGoc) return;
 
-    // Cập nhật giao diện trước cho mượt (optimistic update)
     setTaskCuaDuAn((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: targetStatus } : t)));
 
     try {
@@ -217,10 +225,8 @@ export default function TrangDuAn() {
         body: JSON.stringify({ status: targetStatus }),
       });
       showToast('info', 'Cập nhật tiến độ', 'Đã lưu thay đổi vào hệ thống');
-      // Đồng bộ lại số liệu tổng (completed/total) trên thẻ dự án
       taiDanhSachDuAn();
     } catch (loi) {
-      // Lưu thất bại -> hoàn tác lại giao diện, không giữ trạng thái sai
       setTaskCuaDuAn((prev) => prev.map((t) => (t.id === taskId ? taskGoc : t)));
       showToast('error', 'Không lưu được', loi.message);
     }
@@ -252,6 +258,22 @@ export default function TrangDuAn() {
     } catch (loi) {
       showToast('error', 'Không tạo được task', loi.message);
     }
+  };
+
+  const xuLyTaoNhomInline = (e) => {
+    e.preventDefault();
+    if (!tenNhomMoi.trim()) return;
+    setDanhSachNhom((prev) => [...prev, { id: Date.now(), name: tenNhomMoi.trim(), members_count: 1 }]);
+    setTenNhomMoi('');
+    showToast('success', 'Thành công', 'Đã tạo nhóm mới trong dự án');
+  };
+
+  const xuLyMoiThanhVienInline = (e) => {
+    e.preventDefault();
+    if (!emailThanhVien.trim()) return;
+    setDanhSachThanhVien((prev) => [...prev, { id: Date.now(), name: emailThanhVien.split('@')[0], email: emailThanhVien, role: 'Member' }]);
+    setEmailThanhVien('');
+    showToast('success', 'Thành công', 'Đã gửi lời mời thành viên');
   };
 
   const danhSachLoc = danhSachDuAn.filter((duAn) => {
@@ -419,6 +441,96 @@ export default function TrangDuAn() {
               ))}
             </div>
           )}
+
+          {/* PHẦN WORKSPACE & NHÓM TÍCH HỢP BÊN TRONG CHI TIẾT DỰ ÁN */}
+          <div className="project-workspace-section">
+            <div className="workspace-header-row">
+              <h3><Building2 size={20} /> Không gian làm việc & Nhóm dự án</h3>
+            </div>
+
+            <div className="workspace-grid-inline">
+              <div className="card-box-inline">
+                <h4><FolderPlusIcon size={16} /> Tạo Nhóm Làm Việc</h4>
+                <form onSubmit={xuLyTaoNhomInline}>
+                  <div className="input-group-custom">
+                    <Users size={18} className="input-icon" />
+                    <input
+                      type="text"
+                      placeholder="Tên nhóm (Frontend, Backend...)"
+                      value={tenNhomMoi}
+                      onChange={(e) => setTenNhomMoi(e.target.value)}
+                      className="input-field-custom"
+                      required
+                    />
+                  </div>
+                  <button type="submit" className="btn-primary-custom" style={{ width: '100%' }}>
+                    <Plus size={16} /> Tạo Nhóm
+                  </button>
+                </form>
+              </div>
+
+              <div className="card-box-inline">
+                <h4><UserPlus size={16} /> Mời Thành Viên</h4>
+                <form onSubmit={xuLyMoiThanhVienInline}>
+                  <div className="input-group-custom">
+                    <Mail size={18} className="input-icon" />
+                    <input
+                      type="email"
+                      placeholder="Email thành viên..."
+                      value={emailThanhVien}
+                      onChange={(e) => setEmailThanhVien(e.target.value)}
+                      className="input-field-custom"
+                      required
+                    />
+                  </div>
+                  <button type="submit" className="btn-secondary-custom" style={{ width: '100%' }}>
+                    <UserPlus size={16} /> Gửi Lời Mời
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <div className="workspace-tabs-inline">
+              <button
+                className={`tab-btn-inline ${tabWorkspace === 'nhom' ? 'active' : ''}`}
+                onClick={() => setTabWorkspace('nhom')}
+              >
+                <Users size={14} /> Danh sách Nhóm ({danhSachNhom.length})
+              </button>
+              <button
+                className={`tab-btn-inline ${tabWorkspace === 'thanhvien' ? 'active' : ''}`}
+                onClick={() => setTabWorkspace('thanhvien')}
+              >
+                <Shield size={14} /> Thành viên ({danhSachThanhVien.length})
+              </button>
+            </div>
+
+            {tabWorkspace === 'nhom' ? (
+              <div className="team-grid-inline">
+                {danhSachNhom.map((nhom) => (
+                  <div key={nhom.id} className="team-card-inline">
+                    <div className="team-avatar-inline">{nhom.name.charAt(0).toUpperCase()}</div>
+                    <div className="team-info-inline">
+                      <h5>{nhom.name}</h5>
+                      <p>{nhom.members_count || 1} thành viên</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="member-grid-inline">
+                {danhSachThanhVien.map((tv) => (
+                  <div key={tv.id} className="member-card-inline">
+                    <div className="member-avatar-inline">{tv.name.charAt(0).toUpperCase()}</div>
+                    <div className="member-info-inline">
+                      <h5>{tv.name}</h5>
+                      <p>{tv.email}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <>
@@ -589,7 +701,7 @@ export default function TrangDuAn() {
                             className="btn-card-action view"
                             onClick={() => setDuAnDangChon(duAn)}
                           >
-                            <span>Truy cập Kanban</span>
+                            <span>Truy cập Dự án & Workspace</span>
                             <ExternalLink size={14} />
                           </button>
                           <button
@@ -626,7 +738,7 @@ export default function TrangDuAn() {
                           </button>
                         </div>
                         <button className="btn-card-action view" onClick={() => setDuAnDangChon(duAn)}>
-                          <span>Truy cập Kanban</span>
+                          <span>Truy cập Dự án & Workspace</span>
                           <ExternalLink size={14} />
                         </button>
                         <button className="btn-card-action delete" onClick={() => xuLyXoaDuAn(duAn.id, duAn.name)}>

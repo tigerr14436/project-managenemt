@@ -15,7 +15,7 @@ export default function AppRoutes() {
       <Routes>
         <Route 
           path="/" 
-          element={daDangNhap ? <Navigate to="/du-an" replace /> : <TrangChu />} 
+          element={daDangNhap ? <TrangChu /> : <Navigate to="/" replace />} 
         />
         
         <Route 
@@ -30,7 +30,7 @@ export default function AppRoutes() {
 
         <Route 
           path="*" 
-          element={<Navigate to={daDangNhap ? "/du-an" : "/"} replace />} 
+          element={<Navigate to={daDangNhap ? "/" : "/"} replace />} 
         />
       </Routes>
     </Navigation>
