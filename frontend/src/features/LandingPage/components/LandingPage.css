@@ -1,0 +1,167 @@
+/* LANDING PAGE CONTAINER */
+.landing-page-container {
+  min-height: 100vh;
+  background-color: #0b0f19;
+  color: #f8fafc;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* HERO SECTION */
+.landing-page-hero {
+  max-width: 800px;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* TOP PILL BADGE */
+.landing-badge-pill {
+  background: rgba(30, 27, 75, 0.6);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  color: #818cf8;
+  padding: 6px 20px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 28px;
+}
+
+/* MAIN HEADING */
+.landing-main-title {
+  font-size: 52px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 20px 0;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.landing-main-title .highlight-text {
+  color: #6366f1;
+}
+
+/* DESCRIPTION TEXT */
+.landing-description {
+  font-size: 15px;
+  color: #94a3b8;
+  max-width: 650px;
+  margin: 0 auto 36px auto;
+  line-height: 1.6;
+}
+
+/* ACTION BUTTONS */
+.landing-action-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-primary-purple {
+  background-color: #6366f1;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 28px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary-purple:hover {
+  background-color: #4f46e5;
+  transform: translateY(-1px);
+}
+
+.btn-outline-dark {
+  background-color: transparent;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 28px;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-outline-dark:hover {
+  background-color: #1e293b;
+  border-color: #475569;
+}
+
+/* AUTHENTICATION MODAL */
+.landing-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(5px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.landing-modal-box {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 420px;
+  padding: 32px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  position: relative;
+}
+
+.landing-modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.landing-modal-close:hover {
+  background: #334155;
+  color: #fff;
+}
+
+.landing-modal-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #f8fafc;
+  margin: 0 0 6px 0;
+}
+
+.landing-modal-subtitle {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0 0 24px 0;
+}
+
+@media (max-width: 640px) {
+  .landing-main-title {
+    font-size: 36px;
+  }
+  .landing-action-group {
+    flex-direction: column;
+    width: 100%;
+  }
+  .btn-primary-purple, .btn-outline-dark {
+    width: 100%;
+  }
+}

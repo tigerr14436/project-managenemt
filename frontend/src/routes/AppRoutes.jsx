@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
+import LandingPage from "../features/LandingPage/components/LandingPage";
 import DashboardPage from "../features/DashBoard/components/DashboardPage";
 import ProjectManagement from "../features/Projects/components/ProjectManagement";
 import WorkspacePage from "../features/Workspaces/components/WorkspacePage";
@@ -16,7 +17,13 @@ export default function AppRoutes() {
       <Routes>
         <Route
           path="/"
-          element={isAuthenticated ? <DashboardPage /> : <Navigate to="/" replace />}
+          element={
+            isAuthenticated ? (
+              <DashboardPage />
+            ) : (
+              <LandingPage />
+            )
+          }
         />
 
         <Route
@@ -32,12 +39,13 @@ export default function AppRoutes() {
         />
 
         <Route
-          path="*"
-          element={<Navigate to={isAuthenticated ? "/" : "/"} replace />}
-        />
-        <Route
           path="/profile"
           element={isAuthenticated ? <ProfilePage /> : <Navigate to="/" replace />}
+        />
+
+        <Route
+          path="*"
+          element={<Navigate to="/" replace />}
         />
       </Routes>
     </Navigation>
