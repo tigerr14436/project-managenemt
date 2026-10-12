@@ -45,7 +45,7 @@ export default function Navigation({ children, daDangNhap, setDaDangNhap }) {
           daDangNhap={daDangNhap}
         />
 
-        <main className={`main-content ${!daDangNhap ? "no-sidebar" : ""}`}>
+        <main className={`main-content ${!daDangNhap ? "no-sidebar" : ""} ${moSidebar ? "sidebar-opened" : ""}`}>
           {React.Children.map(children, (child) => {
             if (React.isValidElement(child)) {
               return React.cloneElement(child, {

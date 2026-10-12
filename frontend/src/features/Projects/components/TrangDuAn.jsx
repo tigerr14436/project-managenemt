@@ -31,7 +31,8 @@ import {
   Users,
   Mail,
   FolderPlus as FolderPlusIcon,
-  Shield
+  Shield,
+  Lock
 } from 'lucide-react';
 import './TrangDuAn.css';
 
@@ -78,14 +79,15 @@ export default function TrangDuAn() {
   const [taskCuaDuAn, setTaskCuaDuAn] = useState([]);
   const [dangTaiTask, setDangTaiTask] = useState(false);
 
-  // State Workspace tích hợp trong trang dự án
+  // State Workspace & Phân quyền tích hợp
   const [danhSachNhom, setDanhSachNhom] = useState([
     { id: 101, name: 'Đội ngũ Frontend', members_count: 5 },
     { id: 102, name: 'Đội ngũ Backend API', members_count: 4 }
   ]);
   const [danhSachThanhVien, setDanhSachThanhVien] = useState([
-    { id: 1, name: 'Nguyễn Văn A', email: 'vana@devtask.vn', role: 'Admin' },
-    { id: 2, name: 'Trần Thị B', email: 'thib@devtask.vn', role: 'Member' }
+    { id: 1, name: 'Nguyễn Văn A', email: 'vana@devtask.vn', role: 'Owner' },
+    { id: 2, name: 'Trần Thị B', email: 'thib@devtask.vn', role: 'Member' },
+    { id: 3, name: 'Lê Hoàng C', email: 'hoangc@devtask.vn', role: 'Viewer' }
   ]);
   const [tabWorkspace, setTabWorkspace] = useState('nhom');
   const [tenNhomMoi, setTenNhomMoi] = useState('');
@@ -442,7 +444,7 @@ export default function TrangDuAn() {
             </div>
           )}
 
-          {/* PHẦN WORKSPACE & NHÓM TÍCH HỢP BÊN TRONG CHI TIẾT DỰ ÁN */}
+          {/* KHUNG WORKSPACE & NHÓM INLINE */}
           <div className="project-workspace-section">
             <div className="workspace-header-row">
               <h3><Building2 size={20} /> Không gian làm việc & Nhóm dự án</h3>
@@ -530,6 +532,104 @@ export default function TrangDuAn() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* KHUNG QUẢN LÝ PHÂN QUYỀN TRONG DỰ ÁN */}
+          <div className="permissions-container">
+            <div className="permissions-header">
+              <div className="permissions-title-wrap">
+                <Shield size={20} style={{ color: '#818cf8' }} />
+                <h3>Quản lý Phân Quyền Thành Viên</h3>
+              </div>
+              <span className="code-label">Tổng số: {danhSachThanhVien.length} thành viên</span>
+            </div>
+            <p className="permissions-subtitle">Thiết lập quyền hạn truy cập, chỉnh sửa và quản trị cho từng thành viên trong dự án</p>
+
+            <div className="members-table-wrapper">
+              <table className="members-table">
+                <thead>
+                  <tr>
+                    <th>Thành viên</th>
+                    <th>Email</th>
+                    <th>Vai trò (Role)</th>
+                    <th>Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {danhSachThanhVien.map((tv) => (
+                    <tr key={tv.id}>
+                      <td>
+                        <div className="member-info-cell">
+                          <div className="member-avatar-small">{tv.name.charAt(0).toUpperCase()}</div>
+                          <div>
+                            <p className="member-name">{tv.name}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td><span className="member-email">{tv.email}</span></td>
+                      <td>
+                        <select 
+                          className="role-select" 
+                          defaultValue={tv.role}
+                          onChange={(e) => {
+                            showToast('success', 'Đổi quyền thành công', `Đã cập nhật vai trò của ${tv.name} thành ${e.target.value}`);
+                          }}
+                        >
+                          <option value="Owner">Quản trị viên (Owner)</option>
+                          <option value="Member">Thành viên (Member)</option>
+                          <option value="Viewer">Người xem (Viewer)</option>
+                        </select>
+                      </td>
+                      <td>
+                        <button 
+                          className="btn-revoke"
+                          onClick={() => {
+                            if (window.confirm(`Bạn muốn xóa ${tv.name} khỏi dự án?`)) {
+                              setDanhSachThanhVien(prev => prev.filter(item => item.id !== tv.id));
+                              showToast('warning', 'Đã thu hồi quyền', `Đã gỡ ${tv.name} khỏi dự án`);
+                            }
+                          }}
+                        >
+                          <Trash2 size={13} /> Xóa khỏi dự án
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="permissions-matrix">
+              <h4><Lock size={14} style={{ color: '#38bdf8' }} /> Ma trận phân quyền chi tiết</h4>
+              <div className="matrix-grid">
+                <div className="matrix-card">
+                  <h5>Quản trị viên (Owner)</h5>
+                  <ul>
+                    <li>Toàn quyền quản lý dự án</li>
+                    <li>Thêm / xóa thành viên & phân quyền</li>
+                    <li>Xóa dự án hoặc cấu hình hệ thống</li>
+                  </ul>
+                </div>
+
+                <div className="matrix-card">
+                  <h5>Thành viên (Member)</h5>
+                  <ul>
+                    <li>Tạo và chỉnh sửa Task / Kanban</li>
+                    <li>Cập nhật trạng thái công việc</li>
+                    <li>Bình luận và trao đổi trong task</li>
+                  </ul>
+                </div>
+
+                <div className="matrix-card">
+                  <h5>Người xem (Viewer)</h5>
+                  <ul>
+                    <li>Chỉ được xem tiến độ dự án</li>
+                    <li>Không thể tạo hoặc sửa Task</li>
+                    <li>Xem danh sách thành viên nhóm</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       ) : (

@@ -39,6 +39,34 @@ body {
   gap: 16px;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* KHU VỰC AVATAR VÀ ĐĂNG XUẤT TRÊN HEADER */
+.user-profile-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
 .menu-toggle-btn {
   background: #1f2937;
   border: 1px solid #374151;
@@ -140,6 +168,7 @@ body {
   display: flex;
   flex: 1;
   margin-top: 64px;
+  position: relative;
 }
 
 /* SIDEBAR CỐ ĐỊNH BÊN TRÁI */
@@ -155,6 +184,10 @@ body {
   bottom: 0;
   left: 0;
   transform: translateX(-100%);
+}
+
+.main-sidebar.open {
+  transform: translateX(0);
 }
 
 .sidebar-nav {
@@ -192,7 +225,7 @@ body {
   flex-shrink: 0;
 }
 
-/* NỘI DUNG CHÍNH (ĐẨY LÙI SANG PHẢI BẰNG WIDTH CỦA SIDEBAR) */
+/* NỘI DUNG CHÍNH (ĐẨY LÙI SANG PHẢI KHI MỞ SIDEBAR) */
 .main-content {
   flex: 1;
   margin-left: 0; 
@@ -202,18 +235,30 @@ body {
   min-height: calc(100vh - 64px);
   transition: margin-left 0.3s ease;
 }
- .main-sidebar.open {
-    transform: translateX(0);
-  }
+
+/* Khi sidebar mở trên desktop, đẩy nội dung sang phải bằng chiều rộng sidebar (250px) */
+.main-content.sidebar-opened {
+  margin-left: 250px;
+}
+
+.main-content.no-sidebar {
+  margin-left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
 /* GIAO DIỆN DI ĐỘNG */
 @media (max-width: 768px) {
   .main-sidebar {
     transform: translateX(-100%);
   }
 
- 
+  .main-sidebar.open {
+    transform: translateX(0);
+  }
 
-  .main-content {
+  .main-content.sidebar-opened {
     margin-left: 0;
   }
 
@@ -227,10 +272,4 @@ body {
     backdrop-filter: blur(4px);
     z-index: 80;
   }
-}
-.main-content.no-sidebar {
-  margin-left: 0 !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  padding: 0 !important;
 }

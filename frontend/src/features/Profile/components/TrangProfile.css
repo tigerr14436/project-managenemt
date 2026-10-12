@@ -1,0 +1,223 @@
+/* CONTAINER PROFILE */
+.profile-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px 20px 40px 20px;
+  color: #f8fafc;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.profile-header {
+  margin-bottom: 24px;
+}
+
+.profile-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #f8fafc;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.02em;
+}
+
+.profile-subtitle {
+  font-size: 14px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* THẺ NỘI DUNG PROFILE */
+.profile-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+/* PHẦN BANNER & AVATAR LỚN */
+.profile-top-section {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid #334155;
+  margin-bottom: 28px;
+}
+
+.profile-big-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.profile-user-meta h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0 0 6px 0;
+}
+
+.profile-user-meta p {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0 0 10px 0;
+}
+
+.profile-role-tag {
+  display: inline-block;
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* FORM CHỈNH SỬA THÔNG TIN */
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profile-grid-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.form-group-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group-profile label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-input {
+  width: 100%;
+  padding: 12px 14px;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  color: #f8fafc;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.profile-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.profile-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.profile-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 20px;
+  border-top: 1px solid #334155;
+}
+
+.btn-save-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-save-profile:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.45);
+}
+/* KHU VỰC AVATAR VÀ TẢI ẢNH LÊN */
+.profile-avatar-wrapper {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  border-radius: 24px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-avatar-fallback {
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 28px;
+}
+
+/* NÚT THAY ĐỔI ẢNH (CAMERA OVERLAY) */
+.avatar-upload-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+  color: #ffffff;
+}
+
+.profile-avatar-wrapper:hover .avatar-upload-overlay {
+  opacity: 1;
+}
+
+.avatar-file-input {
+  display: none;
+}
+@media (max-width: 640px) {
+  .profile-grid-two {
+    grid-template-columns: 1fr;
+  }
+  .profile-top-section {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -13,9 +13,9 @@ export default function Header({
 
   const xulyClickLogo = () => {
     if (daDangNhap) {
-      dieuHuong('/du-an'); // Đã đăng nhập -> sang tab Quản lý dự án
+      dieuHuong('/du-an');
     } else {
-      dieuHuong('/'); // Chưa đăng nhập -> về trang chủ
+      dieuHuong('/');
     }
   };
 
@@ -28,7 +28,6 @@ export default function Header({
           </button>
         )}
         
-        {/* Cập nhật điều hướng khi click logo */}
         <div className="brand-logo" onClick={xulyClickLogo}>
           <Zap size={22} className="brand-icon" />
           <span>DevTask</span>
@@ -37,10 +36,15 @@ export default function Header({
 
       <div className="header-right">
         {daDangNhap ? (
-          <button onClick={xulyDangXuat} className="logout-btn">
-            <LogOut size={16} />
-            <span>Đăng xuất</span>
-          </button>
+          <div className="user-profile-section">
+            <div className="user-avatar-badge" title="Tài khoản cá nhân">
+              SH
+            </div>
+            <button onClick={xulyDangXuat} className="logout-btn">
+              <LogOut size={16} />
+              <span>Đăng xuất</span>
+            </button>
+          </div>
         ) : (
           <div className="header-auth-btns">
             <button className="header-btn login-btn" onClick={xulyMoAuthModal}>
