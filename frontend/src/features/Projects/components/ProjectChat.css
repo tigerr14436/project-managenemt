@@ -1,0 +1,199 @@
+/* CONTAINER GÓC PHẢI DƯỚI MÀN HÌNH */
+.khung-bong-bong-chat {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* NÚT TRÒN BONG BÓNG CHAT */
+.nut-bong-bong-chat {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.nut-bong-bong-chat:hover {
+  transform: scale(1.08);
+  box-shadow: 0 15px 30px rgba(16, 185, 129, 0.6);
+}
+
+.huy-hieu-so-tin-nhan {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background-color: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #0b0f19;
+}
+
+/* CỬA SỔ POPUP CHAT */
+.cua-so-chat-popup {
+  width: 340px;
+  height: 440px;
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: hieuUngMoChat 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes hieuUngMoChat {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.header-cua-so-chat {
+  background-color: #0f172a;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #334155;
+}
+
+.tieu-de-chat-nhom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.nut-thu-gon-chat {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.nut-thu-gon-chat:hover {
+  background-color: #334155;
+  color: #fff;
+}
+
+.than-noi-dung-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  background-color: #0b0f19;
+  overflow: hidden;
+}
+
+.danh-sach-tin-nhan-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.dong-tin-nhan {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+}
+
+.dong-tin-nhan.cua-nguoi-khac {
+  align-self: flex-start;
+}
+
+.dong-tin-nhan.cua-toi {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.thong-tin-nguoi-gui {
+  font-size: 10px;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+
+.bong-bong-noi-dung {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.dong-tin-nhan.cua-nguoi-khac .bong-bong-noi-dung {
+  background-color: #1e293b;
+  color: #f8fafc;
+  border: 1px solid #334155;
+}
+
+.dong-tin-nhan.cua-toi .bong-bong-noi-dung {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+}
+
+.form-nhap-tin-nhan {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  border-top: 1px solid #1e293b;
+  padding-top: 10px;
+}
+
+.o-nhap-lieu-chat {
+  flex: 1;
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f8fafc;
+  font-size: 13px;
+  outline: none;
+}
+
+.o-nhap-lieu-chat:focus {
+  border-color: #10b981;
+}
+
+.nut-gui-chat {
+  background: #10b981;
+  border: none;
+  color: #ffffff;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.nut-gui-chat:hover {
+  background: #059669;
+}

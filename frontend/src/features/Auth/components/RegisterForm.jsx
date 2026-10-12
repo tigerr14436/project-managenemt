@@ -12,14 +12,14 @@ export default function RegisterForm() {
     confirmPassword: '',
   });
 
-  const [errors, setErrors] = useState({});
+  const [fieldErrors, setFieldErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+    if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const validateForm = () => {
@@ -61,7 +61,7 @@ export default function RegisterForm() {
     const validationErrors = validateForm();
 
     if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+      setFieldErrors(validationErrors);
       return;
     }
 
@@ -99,9 +99,9 @@ export default function RegisterForm() {
             placeholder="Nguyễn Văn A"
             value={formData.fullName}
             onChange={handleChange}
-            className={`input-field ${errors.fullName ? 'error' : ''}`}
+            className={`input-field ${fieldErrors.fullName ? 'error' : ''}`}
           />
-          {errors.fullName && <p className="error-text">{errors.fullName}</p>}
+          {fieldErrors.fullName && <p className="error-text">{fieldErrors.fullName}</p>}
         </div>
 
         <div className="input-group">
@@ -113,9 +113,9 @@ export default function RegisterForm() {
             placeholder="name@example.com"
             value={formData.email}
             onChange={handleChange}
-            className={`input-field ${errors.email ? 'error' : ''}`}
+            className={`input-field ${fieldErrors.email ? 'error' : ''}`}
           />
-          {errors.email && <p className="error-text">{errors.email}</p>}
+          {fieldErrors.email && <p className="error-text">{fieldErrors.email}</p>}
         </div>
 
         <div className="input-group">
@@ -127,9 +127,9 @@ export default function RegisterForm() {
             placeholder="••••••••"
             value={formData.password}
             onChange={handleChange}
-            className={`input-field ${errors.password ? 'error' : ''}`}
+            className={`input-field ${fieldErrors.password ? 'error' : ''}`}
           />
-          {errors.password && <p className="error-text">{errors.password}</p>}
+          {fieldErrors.password && <p className="error-text">{fieldErrors.password}</p>}
         </div>
 
         <div className="input-group">
@@ -141,9 +141,9 @@ export default function RegisterForm() {
             placeholder="••••••••"
             value={formData.confirmPassword}
             onChange={handleChange}
-            className={`input-field ${errors.confirmPassword ? 'error' : ''}`}
+            className={`input-field ${fieldErrors.confirmPassword ? 'error' : ''}`}
           />
-          {errors.confirmPassword && <p className="error-text">{errors.confirmPassword}</p>}
+          {fieldErrors.confirmPassword && <p className="error-text">{fieldErrors.confirmPassword}</p>}
         </div>
 
         <button type="submit" disabled={isSubmitting} className="btn-submit">

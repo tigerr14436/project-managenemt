@@ -5,51 +5,51 @@ import Sidebar from "./Sidebar";
 import AuthModal from "../features/Auth/components/AuthModal";
 import "./Navigation.css";
 
-export default function Navigation({ children, daDangNhap, setDaDangNhap }) {
-  const [moSidebar, setMoSidebar] = useState(daDangNhap);
-  const [moAuthModal, setMoAuthModal] = useState(false);
-  const dieuHuong = useNavigate();
+export default function Navigation({ children, isAuthenticated, setIsAuthenticated }) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(isAuthenticated);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const navigate = useNavigate();
 
-  const xulyDangXuat = () => {
+  const handleLogout = () => {
     localStorage.removeItem("access_token");
-    setDaDangNhap(false);
-    setMoSidebar(false);
-    dieuHuong("/", { replace: true });
+    setIsAuthenticated(false);
+    setIsSidebarOpen(false);
+    navigate("/", { replace: true });
   };
 
-  const xulyMoAuthModal = () => {
-    setMoAuthModal(true);
+  const handleOpenAuthModal = () => {
+    setIsAuthModalOpen(true);
   };
 
   const handleAuthSuccess = () => {
-    setDaDangNhap(true);
-    setMoSidebar(true);
-    setMoAuthModal(false);
-    dieuHuong("/du-an", { replace: true });
+    setIsAuthenticated(true);
+    setIsSidebarOpen(true);
+    setIsAuthModalOpen(false);
+    navigate("/du-an", { replace: true });
   };
 
   return (
     <div className="layout-wrapper">
       <Header
-        moSidebar={moSidebar}
-        setMoSidebar={setMoSidebar}
-        daDangNhap={daDangNhap}
-        xulyMoAuthModal={xulyMoAuthModal}
-        xulyDangXuat={xulyDangXuat}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        isAuthenticated={isAuthenticated}
+        onOpenAuthModal={handleOpenAuthModal}
+        onLogout={handleLogout}
       />
 
       <div className="main-body">
         <Sidebar
-          moSidebar={moSidebar}
-          setMoSidebar={setMoSidebar}
-          daDangNhap={daDangNhap}
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
+          isAuthenticated={isAuthenticated}
         />
 
-        <main className={`main-content ${!daDangNhap ? "no-sidebar" : ""} ${moSidebar ? "sidebar-opened" : ""}`}>
+        <main className={`main-content ${!isAuthenticated ? "no-sidebar" : ""} ${isSidebarOpen ? "sidebar-opened" : ""}`}>
           {React.Children.map(children, (child) => {
             if (React.isValidElement(child)) {
               return React.cloneElement(child, {
-                xulyMoAuthModal: xulyMoAuthModal,
+                onOpenAuthModal: handleOpenAuthModal,
               });
             }
             return child;
@@ -58,8 +58,8 @@ export default function Navigation({ children, daDangNhap, setDaDangNhap }) {
       </div>
 
       <AuthModal
-        isOpen={moAuthModal}
-        onClose={() => setMoAuthModal(false)}
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
         onSuccess={handleAuthSuccess}
       />
     </div>

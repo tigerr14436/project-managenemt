@@ -16,15 +16,15 @@ import './AuthModal.css';
 
 export default function AuthModal({ isOpen, onClose, onSuccess }) {
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLoginMode, setIsLoginMode] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
   });
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', content: '' });
+  const [isLoading, setIsLoading] = useState(false);
+  const [feedback, setFeedback] = useState({ type: '', content: '' });
 
   if (!isOpen) return null;
 
@@ -32,24 +32,24 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const switchMode = (mode) => {
-    setIsLogin(mode);
-    setMessage({ type: '', content: '' });
+  const switchMode = (loginMode) => {
+    setIsLoginMode(loginMode);
+    setFeedback({ type: '', content: '' });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage({ type: '', content: '' });
+    setFeedback({ type: '', content: '' });
 
-    if (!isLogin && formData.password !== formData.confirmPassword) {
-      setMessage({ type: 'error', content: 'Mật khẩu xác nhận không trùng khớp!' });
+    if (!isLoginMode && formData.password !== formData.confirmPassword) {
+      setFeedback({ type: 'error', content: 'Mật khẩu xác nhận không trùng khớp!' });
       return;
     }
 
-    setLoading(true);
+    setIsLoading(true);
 
-    const endpoint = isLogin ? '/auth/login' : '/auth/register';
-    const payload = isLogin
+    const endpoint = isLoginMode ? '/auth/login' : '/auth/register';
+    const payload = isLoginMode
       ? { email: formData.email, password: formData.password }
       : { name: formData.name, email: formData.email, password: formData.password };
 
@@ -62,14 +62,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-    } catch (networkErr) {
+    } catch (networkError) {
       // Chỉ rơi vào đây khi KHÔNG kết nối được server — lỗi mạng thật sự,
       // không phải do sai email/mật khẩu. Không tự coi là thành công.
-      setMessage({
+      setFeedback({
         type: 'error',
         content: 'Không thể kết nối tới server. Kiểm tra backend đã chạy ở cổng 8000 chưa.',
       });
-      setLoading(false);
+      setIsLoading(false);
       return;
     }
 
@@ -78,29 +78,29 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
-      setMessage({
+      setFeedback({
         type: 'error',
         content: data?.detail || 'Email hoặc mật khẩu không đúng.',
       });
-      setLoading(false);
+      setIsLoading(false);
       return;
     }
 
     // Chỉ tới đây khi server xác nhận thành công thật (status 2xx)
-    if (isLogin && data?.access_token) {
+    if (isLoginMode && data?.access_token) {
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('user_email', formData.email);
     }
 
-    setMessage({
+    setFeedback({
       type: 'success',
-      content: isLogin ? 'Đăng nhập thành công!' : 'Đăng ký tài khoản thành công!',
+      content: isLoginMode ? 'Đăng nhập thành công!' : 'Đăng ký tài khoản thành công!',
     });
 
-    setLoading(false);
+    setIsLoading(false);
 
     setTimeout(() => {
-      if (isLogin) {
+      if (isLoginMode) {
         if (onSuccess) onSuccess(data);
         onClose();
         navigate('/du-an');
@@ -122,7 +122,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
         <div className="auth-tabs">
           <button
             type="button"
-            className={`auth-tab-btn ${isLogin ? 'active' : ''}`}
+            className={`auth-tab-btn ${isLoginMode ? 'active' : ''}`}
             onClick={() => switchMode(true)}
           >
             <LogIn size={16} />
@@ -130,7 +130,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
           </button>
           <button
             type="button"
-            className={`auth-tab-btn ${!isLogin ? 'active' : ''}`}
+            className={`auth-tab-btn ${!isLoginMode ? 'active' : ''}`}
             onClick={() => switchMode(false)}
           >
             <UserPlus size={16} />
@@ -139,23 +139,23 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
         </div>
 
         <div className="auth-header">
-          <h3>{isLogin ? 'Chào mừng trở lại!' : 'Tạo tài khoản mới'}</h3>
+          <h3>{isLoginMode ? 'Chào mừng trở lại!' : 'Tạo tài khoản mới'}</h3>
           <p>
-            {isLogin
+            {isLoginMode
               ? 'Đăng nhập bằng email và mật khẩu đã đăng ký'
               : 'Điền thông tin để tạo tài khoản DevTask'}
           </p>
         </div>
 
-        {message.content && (
-          <div className={`auth-alert ${message.type}`}>
-            {message.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
-            <span>{message.content}</span>
+        {feedback.content && (
+          <div className={`auth-alert ${feedback.type}`}>
+            {feedback.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+            <span>{feedback.content}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {!isLogin && (
+          {!isLoginMode && (
             <div className="auth-input-group">
               <User size={18} className="auth-input-icon" />
               <input
@@ -164,7 +164,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
                 placeholder="Họ và tên..."
                 value={formData.name}
                 onChange={handleChange}
-                required={!isLogin}
+                required={!isLoginMode}
                 className="auth-input-field"
               />
             </div>
@@ -196,7 +196,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
             />
           </div>
 
-          {!isLogin && (
+          {!isLoginMode && (
             <div className="auth-input-group">
               <Lock size={18} className="auth-input-icon" />
               <input
@@ -205,18 +205,18 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
                 placeholder="Xác nhận mật khẩu..."
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                required={!isLogin}
+                required={!isLoginMode}
                 className="auth-input-field"
               />
             </div>
           )}
 
-          <button type="submit" disabled={loading} className="auth-submit-btn">
-            {loading ? (
+          <button type="submit" disabled={isLoading} className="auth-submit-btn">
+            {isLoading ? (
               <Loader2 size={18} className="auth-spin-icon" />
             ) : (
               <>
-                <span>{isLogin ? 'Đăng Nhập Ngay' : 'Tạo Tài Khoản Ngay'}</span>
+                <span>{isLoginMode ? 'Đăng Nhập Ngay' : 'Tạo Tài Khoản Ngay'}</span>
                 <ArrowRight size={18} />
               </>
             )}
@@ -224,7 +224,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
         </form>
 
         <div className="auth-footer">
-          {isLogin ? (
+          {isLoginMode ? (
             <p>
               Chưa có tài khoản?{' '}
               <span onClick={() => switchMode(false)}>Đăng ký ngay</span>

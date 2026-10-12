@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { User, Mail, Shield, CheckCircle2, Save, Sparkles, Camera } from 'lucide-react';
-import './TrangProfile.css';
+import './ProfilePage.css';
 
-export default function TrangProfile() {
-  const [thongTin, setThongTin] = useState({
+export default function ProfilePage() {
+  const [profileData, setProfileData] = useState({
     name: 'Shut Heast',
     email: 'shutheast@devtask.vn',
     role: 'Lead Developer / Owner',
@@ -12,29 +12,29 @@ export default function TrangProfile() {
     avatar: null // Lưu trữ URL hoặc Base64 của ảnh đại diện
   });
 
-  const [thanhCong, setThanhCong] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // Xử lý khi người dùng chọn file ảnh từ máy tính
-  const xuLyChonAnh = (e) => {
+  const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setThongTin((prev) => ({ ...prev, avatar: reader.result }));
+        setProfileData((prev) => ({ ...prev, avatar: reader.result }));
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const xuLyLuuThongTin = (e) => {
+  const handleSaveProfile = (e) => {
     e.preventDefault();
-    setThanhCong(true);
-    setTimeout(() => setThanhCong(false), 3000);
+    setIsSuccess(true);
+    setTimeout(() => setIsSuccess(false), 3000);
   };
 
   return (
     <div className="profile-container">
-      {thanhCong && (
+      {isSuccess && (
         <div style={{
           background: 'rgba(16, 185, 129, 0.15)',
           border: '1px solid rgba(16, 185, 129, 0.3)',
@@ -62,43 +62,43 @@ export default function TrangProfile() {
         {/* BANNER THÔNG TIN & AVATAR CÓ THỂ ĐỔI ẢNH */}
         <div className="profile-top-section">
           <div className="profile-avatar-wrapper">
-            {thongTin.avatar ? (
-              <img src={thongTin.avatar} alt="Avatar" className="profile-avatar-img" />
+            {profileData.avatar ? (
+              <img src={profileData.avatar} alt="Avatar" className="profile-avatar-img" />
             ) : (
               <div className="profile-avatar-fallback">
-                {thongTin.name ? thongTin.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'SH'}
+                {profileData.name ? profileData.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'SH'}
               </div>
             )}
-            
+
             {/* Nút click để tải ảnh lên */}
             <label className="avatar-upload-overlay" title="Thay đổi hình đại diện">
               <Camera size={22} />
-              <input 
-                type="file" 
-                accept="image/*" 
-                className="avatar-file-input" 
-                onChange={xuLyChonAnh} 
+              <input
+                type="file"
+                accept="image/*"
+                className="avatar-file-input"
+                onChange={handleAvatarChange}
               />
             </label>
           </div>
 
           <div className="profile-user-meta">
-            <h3>{thongTin.name}</h3>
-            <p>{thongTin.email}</p>
-            <span className="profile-role-tag">{thongTin.role}</span>
+            <h3>{profileData.name}</h3>
+            <p>{profileData.email}</p>
+            <span className="profile-role-tag">{profileData.role}</span>
           </div>
         </div>
 
         {/* FORM CHỈNH SỬA */}
-        <form onSubmit={xuLyLuuThongTin} className="profile-form">
+        <form onSubmit={handleSaveProfile} className="profile-form">
           <div className="profile-grid-two">
             <div className="form-group-profile">
               <label><User size={16} style={{ color: '#818cf8' }} /> Họ và tên</label>
               <input
                 type="text"
                 className="profile-input"
-                value={thongTin.name}
-                onChange={(e) => setThongTin({ ...thongTin, name: e.target.value })}
+                value={profileData.name}
+                onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
                 required
               />
             </div>
@@ -108,7 +108,7 @@ export default function TrangProfile() {
               <input
                 type="email"
                 className="profile-input"
-                value={thongTin.email}
+                value={profileData.email}
                 disabled
               />
             </div>
@@ -120,8 +120,8 @@ export default function TrangProfile() {
               <input
                 type="text"
                 className="profile-input"
-                value={thongTin.role}
-                onChange={(e) => setThongTin({ ...thongTin, role: e.target.value })}
+                value={profileData.role}
+                onChange={(e) => setProfileData({ ...profileData, role: e.target.value })}
               />
             </div>
 
@@ -130,8 +130,8 @@ export default function TrangProfile() {
               <input
                 type="text"
                 className="profile-input"
-                value={thongTin.department}
-                onChange={(e) => setThongTin({ ...thongTin, department: e.target.value })}
+                value={profileData.department}
+                onChange={(e) => setProfileData({ ...profileData, department: e.target.value })}
               />
             </div>
           </div>
@@ -141,8 +141,8 @@ export default function TrangProfile() {
             <textarea
               className="profile-input"
               style={{ minHeight: '90px', resize: 'vertical' }}
-              value={thongTin.bio}
-              onChange={(e) => setThongTin({ ...thongTin, bio: e.target.value })}
+              value={profileData.bio}
+              onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
             />
           </div>
 

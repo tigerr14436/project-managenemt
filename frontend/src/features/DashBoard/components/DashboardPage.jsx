@@ -1,39 +1,39 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  FolderKanban, 
-  CheckSquare, 
-  Building2, 
-  Users, 
-  TrendingUp, 
-  Clock, 
-  PlusCircle, 
-  ArrowRight, 
+import {
+  FolderKanban,
+  CheckSquare,
+  Building2,
+  Users,
+  TrendingUp,
+  Clock,
+  PlusCircle,
+  ArrowRight,
   Activity,
   Layers,
   CheckCircle2,
   BarChart3
 } from 'lucide-react';
-import './TrangChu.css';
+import './DashboardPage.css';
 
-export default function TrangChu() {
-  const dieuHuong = useNavigate();
+export default function DashboardPage() {
+  const navigate = useNavigate();
 
-  const thongKe = {
-    tongDuAn: 3,
-    taskHoanThanh: 26,
-    workspace: 2,
-    thanhVien: 12
+  const statistics = {
+    totalProjects: 3,
+    completedTasks: 26,
+    workspaces: 2,
+    members: 12
   };
 
   // Dữ liệu cho sơ đồ tiến độ các dự án
-  const soDoTienDo = [
+  const projectProgressChart = [
     { id: 1, name: 'Hệ thống E-Commerce DevTask', progress: 75, color: 'linear-gradient(90deg, #6366f1 0%, #818cf8 100%)' },
     { id: 2, name: 'Ứng dụng Mobile Banking', progress: 45, color: 'linear-gradient(90deg, #0ea5e9 0%, #38bdf8 100%)' },
     { id: 3, name: 'Website Quản lý Nhân sự HR', progress: 100, color: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)' }
   ];
 
-  const hoatDongGanDay = [
+  const recentActivities = [
     { id: 1, action: 'Đã hoàn thành task "Thiết kế Giao diện Checkout"', project: 'Hệ thống E-Commerce DevTask', time: '10 phút trước' },
     { id: 2, action: 'Tạo task mới "Xác thực sinh trắc học FaceID"', project: 'Ứng dụng Mobile Banking', time: '1 giờ trước' },
     { id: 3, action: 'Thêm thành viên mới vào Workspace Công nghệ', project: 'DevTech Workspace', time: '3 giờ trước' },
@@ -55,7 +55,7 @@ export default function TrangChu() {
           </div>
           <div className="stat-content">
             <h5>Tổng số dự án</h5>
-            <h3>{thongKe.tongDuAn}</h3>
+            <h3>{statistics.totalProjects}</h3>
           </div>
         </div>
 
@@ -65,7 +65,7 @@ export default function TrangChu() {
           </div>
           <div className="stat-content">
             <h5>Task hoàn thành</h5>
-            <h3>{thongKe.taskHoanThanh}</h3>
+            <h3>{statistics.completedTasks}</h3>
           </div>
         </div>
 
@@ -75,7 +75,7 @@ export default function TrangChu() {
           </div>
           <div className="stat-content">
             <h5>Workspace</h5>
-            <h3>{thongKe.workspace}</h3>
+            <h3>{statistics.workspaces}</h3>
           </div>
         </div>
 
@@ -85,7 +85,7 @@ export default function TrangChu() {
           </div>
           <div className="stat-content">
             <h5>Thành viên nhóm</h5>
-            <h3>{thongKe.thanhVien}</h3>
+            <h3>{statistics.members}</h3>
           </div>
         </div>
       </div>
@@ -98,15 +98,15 @@ export default function TrangChu() {
         </h3>
 
         <div className="chart-container">
-          {soDoTienDo.map((item) => (
+          {projectProgressChart.map((item) => (
             <div key={item.id} className="chart-item">
               <div className="chart-info-row">
                 <span>{item.name}</span>
                 <span>{item.progress}%</span>
               </div>
               <div className="chart-bar-bg">
-                <div 
-                  className="chart-bar-fill" 
+                <div
+                  className="chart-bar-fill"
                   style={{ width: `${item.progress}%`, background: item.color }}
                 ></div>
               </div>
@@ -125,7 +125,7 @@ export default function TrangChu() {
           </h3>
 
           <div className="activity-list">
-            {hoatDongGanDay.map((item) => (
+            {recentActivities.map((item) => (
               <div key={item.id} className="activity-item">
                 <div className="activity-icon">
                   <CheckCircle2 size={18} />
@@ -152,7 +152,7 @@ export default function TrangChu() {
           </h3>
 
           <div className="quick-actions-list">
-            <button className="quick-action-btn" onClick={() => dieuHuong('/du-an')}>
+            <button className="quick-action-btn" onClick={() => navigate('/du-an')}>
               <div className="quick-action-btn-left">
                 <FolderKanban size={18} style={{ color: '#818cf8' }} />
                 <span>Quản lý & Tạo Dự Án</span>
@@ -160,15 +160,9 @@ export default function TrangChu() {
               <ArrowRight size={16} style={{ color: '#64748b' }} />
             </button>
 
-            <button className="quick-action-btn" onClick={() => dieuHuong('/workspace')}>
-              <div className="quick-action-btn-left">
-                <Building2 size={18} style={{ color: '#38bdf8' }} />
-                <span>Workspace & Thành viên</span>
-              </div>
-              <ArrowRight size={16} style={{ color: '#64748b' }} />
-            </button>
+            
 
-            <button className="quick-action-btn" onClick={() => dieuHuong('/du-an')}>
+            <button className="quick-action-btn" onClick={() => navigate('/du-an')}>
               <div className="quick-action-btn-left">
                 <PlusCircle size={18} style={{ color: '#34d399' }} />
                 <span>Mở Bảng Kanban Tiến Độ</span>

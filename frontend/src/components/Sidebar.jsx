@@ -2,40 +2,40 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, FolderKanban, Building2, User } from "lucide-react";
 
-export default function Sidebar({ moSidebar, setMoSidebar, daDangNhap }) {
-  const viTriHienTai = useLocation();
+export default function Sidebar({ isSidebarOpen, setIsSidebarOpen, isAuthenticated }) {
+  const location = useLocation();
 
-  if (!daDangNhap) return null;
+  if (!isAuthenticated) return null;
 
   return (
     <>
-      {moSidebar && (
+      {isSidebarOpen && (
         <div
           className="sidebar-overlay"
-          onClick={() => setMoSidebar(false)}
+          onClick={() => setIsSidebarOpen(false)}
         ></div>
       )}
 
-      <aside className={`main-sidebar ${moSidebar ? "open" : ""}`}>
+      <aside className={`main-sidebar ${isSidebarOpen ? "open" : ""}`}>
         <nav className="sidebar-nav">
           <Link
             to="/"
-            className={`nav-item ${viTriHienTai.pathname === "/" ? "active" : ""}`}
+            className={`nav-item ${location.pathname === "/" ? "active" : ""}`}
           >
             <LayoutDashboard size={18} className="nav-icon" />
             <span>Tổng quan Dashboard</span>
           </Link>
 
           <Link
-            to="/du-an"
-            className={`nav-item ${viTriHienTai.pathname === "/du-an" ? "active" : ""}`}
+            to="/project"
+            className={`nav-item ${location.pathname === "/project" ? "active" : ""}`}
           >
             <FolderKanban size={18} className="nav-icon" />
             <span>Quản lý Dự án</span>
           </Link>
           <Link
             to="/profile"
-            className={`nav-item ${viTriHienTai.pathname === "/profile" ? "active" : ""}`}
+            className={`nav-item ${location.pathname === "/profile" ? "active" : ""}`}
           >
             <User size={18} className="nav-icon" />
             <span>Hồ sơ cá nhân</span>
