@@ -4,7 +4,8 @@ import Navigation from "../components/Navigation";
 import LandingPage from "../features/LandingPage/components/LandingPage";
 import DashboardPage from "../features/DashBoard/components/DashboardPage";
 import ProjectManagement from "../features/Projects/components/ProjectManagement";
-import WorkspacePage from "../features/Workspaces/components/WorkspacePage";
+import GroupManagement from "../features/Groups/components/GroupManagement";
+import TaskDetailPage from "../features/Projects/components/TaskDetailPage"; // Trang chi tiết task mới
 import ProfilePage from "../features/Profile/components/ProfilePage";
 
 export default function AppRoutes() {
@@ -31,11 +32,15 @@ export default function AppRoutes() {
           element={isAuthenticated ? <ProjectManagement /> : <Navigate to="/" replace />}
         />
 
+        {/* Thêm route cho trang chi tiết task dựa theo ID */}
         <Route
-          path="/workspace"
-          element={
-            isAuthenticated ? <WorkspacePage /> : <Navigate to="/" replace />
-          }
+          path="/task/:taskId"
+          element={isAuthenticated ? <TaskDetailPage /> : <Navigate to="/" replace />}
+        />
+
+        <Route
+          path="/group-management"
+          element={isAuthenticated ? <GroupManagement /> : <Navigate to="/" replace />}
         />
 
         <Route

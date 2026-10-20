@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, User, Clock, ArrowLeft, ChevronRight, Loader2, Edit3, Trash2 } from 'lucide-react';
 
 const COLUMN_LIST = [
@@ -19,8 +20,10 @@ export default function KanbanBoard({
   changeTaskStatus,
   openTaskModal,
   editTask,
-  deleteTask
+  deleteTask,
 }) {
+  const navigate = useNavigate();
+
   if (isLoadingTasks) {
     return (
       <div className="trang-thai-trong">
@@ -52,13 +55,18 @@ export default function KanbanBoard({
                 const nextColumn = COLUMN_LIST[columnIndex + 1];
 
                 return (
-                  <div key={task.id} className="the-task-item">
+                  <div
+                    key={task.id}
+                    className="the-task-item"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/task/${task.id}`)} // Chuyển sang trang chi tiết task riêng biệt
+                  >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span className={`nhan-muc-do ${task.priority === 'high' ? 'cao' : task.priority === 'medium' ? 'trung-binh' : 'thap'}`}>
                         {task.priority === 'high' ? 'Cao' : task.priority === 'medium' ? 'Trung bình' : 'Thấp'}
                       </span>
 
-                      <div className="nhom-nut-thao-tac-task">
+                      <div className="nhom-nut-thao-tac-task" onClick={(e) => e.stopPropagation()}>
                         <button
                           className="nut-icon-sub"
                           title="Chỉnh sửa công việc"
@@ -84,7 +92,7 @@ export default function KanbanBoard({
                       <span className="han-chot-task"><Clock size={12} /> {formatDate(task.deadline)}</span>
                     </div>
 
-                    <div className="khung-hanh-dong-task">
+                    <div className="khung-hanh-dong-task" onClick={(e) => e.stopPropagation()}>
                       {prevColumn && (
                         <button className="nut-chuyen-trang-thai" onClick={() => changeTaskStatus(task.id, prevColumn.key)}>
                           <ArrowLeft size={12} /> {prevColumn.label}

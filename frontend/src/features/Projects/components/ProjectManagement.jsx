@@ -21,14 +21,14 @@ import {
   Info,
   AlertTriangle,
   BarChart2,
+  FileCode,
+  Layers
 } from "lucide-react";
 import "../ProjectManagement.css";
 
 import ProjectCard from "./ProjectCard";
 import KanbanBoard from "./KanbanBoard";
-import WorkspacePanel from "./WorkspacePanel";
 import CodeManagement from "./CodeManagement";
-import MemberPermissions from "./MemberPermissions";
 import CodeReview from "./CodeReview";
 import ProjectChat from "./ProjectChat";
 
@@ -63,24 +63,14 @@ export default function ProjectManagement() {
   const [projectTasks, setProjectTasks] = useState([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
 
-  const [groupList, setGroupList] = useState([
-    { id: 101, name: "Đội ngũ Frontend", members_count: 5 },
-    { id: 102, name: "Đội ngũ Backend API", members_count: 4 },
-  ]);
-  const [memberList, setMemberList] = useState([
-    { id: 1, name: "Nguyễn Văn A", email: "vana@devtask.vn", role: "Owner" },
-    { id: 2, name: "Trần Thị B", email: "thib@devtask.vn", role: "Member" },
-    { id: 3, name: "Lê Hoàng C", email: "hoangc@devtask.vn", role: "Viewer" },
-  ]);
-  const [workspaceTab, setWorkspaceTab] = useState("nhom");
-  const [newGroupName, setNewGroupName] = useState("");
-  const [memberEmail, setMemberEmail] = useState("");
+  // State quản lý Tab trong chi tiết dự án ('kanban', 'code', 'review')
+  const [activeTab, setActiveTab] = useState('kanban');
 
   const [repoList, setRepoList] = useState([
     { id: 1, name: "devtask-frontend-react", branch: "main", commits_count: 142, last_update: "10 phút trước" },
     { id: 2, name: "devtask-backend-fastapi", branch: "dev", commits_count: 98, last_update: "1 giờ trước" },
   ]);
-  const [commitList, setCommitList] = useState([
+  const [commitList] = useState([
     { id: "a1b2c3d", msg: "feat(auth): integrate OAuth2 & JWT token authentication", author: "Shut Heast", time: "10 phút trước" },
     { id: "e5f6g7h", msg: "fix(kanban): resolve drag and drop status delay issue", author: "Trần Thị B", time: "1 giờ trước" },
   ]);
@@ -111,6 +101,7 @@ export default function ProjectManagement() {
   useEffect(() => {
     fetchProjectList();
   }, []);
+
   useEffect(() => {
     if (selectedProject) fetchProjectTasks(selectedProject.id);
   }, [selectedProject?.id]);
@@ -123,6 +114,7 @@ export default function ProjectManagement() {
       4000,
     );
   };
+
   const removeToast = (id) =>
     setToastList((prev) => prev.filter((t) => t.id !== id));
 
@@ -310,28 +302,6 @@ export default function ProjectManagement() {
     }
   };
 
-  const handleCreateGroupInline = (e) => {
-    e.preventDefault();
-    if (!newGroupName.trim()) return;
-    setGroupList((prev) => [
-      ...prev,
-      { id: Date.now(), name: newGroupName.trim(), members_count: 1 },
-    ]);
-    setNewGroupName("");
-    showNotification("thanh-cong", "Thành công", "Đã tạo nhóm mới trong dự án");
-  };
-
-  const handleInviteMemberInline = (e) => {
-    e.preventDefault();
-    if (!memberEmail.trim()) return;
-    setMemberList((prev) => [
-      ...prev,
-      { id: Date.now(), name: memberEmail.split("@")[0], email: memberEmail, role: "Member" },
-    ]);
-    setMemberEmail("");
-    showNotification("thanh-cong", "Thành công", "Đã gửi lời mời thành viên");
-  };
-
   const handleAddRepoInline = (e) => {
     e.preventDefault();
     if (!newRepoLink.trim()) return;
@@ -376,7 +346,7 @@ export default function ProjectManagement() {
 
       {selectedProject ? (
         <div>
-          <div className="phan-header-kanban">
+          <div className="phan-header-kanban" style={{ marginBottom: '16px' }}>
             <button className="nut-quay-lai" onClick={() => setSelectedProject(null)}>
               <ArrowLeft size={16} />
               <span>Quay lại Danh sách Dự án</span>
@@ -393,98 +363,150 @@ export default function ProjectManagement() {
                 </span>
               </div>
             </div>
-            <button className="nut-chinh" onClick={() => openCreateTaskModal("todo")}>
-              <Plus size={16} />
-              <span>Tạo Task Mới</span>
+            {activeTab === 'kanban' && (
+              <button className="nut-chinh" onClick={() => openCreateTaskModal("todo")}>
+                <Plus size={16} />
+                <span>Tạo Task Mới</span>
+              </button>
+            )}
+          </div>
+
+          {/* THANH TAB CHUYỂN ĐỔI GIAO DIỆN TRONG DỰ ÁN */}
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #334155', paddingBottom: '12px', marginBottom: '20px' }}>
+            <button
+              onClick={() => setActiveTab('kanban')}
+              style={{
+                background: activeTab === 'kanban' ? '#4f46e5' : '#1e293b',
+                color: '#fff',
+                border: '1px solid #334155',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <FolderKanban size={15} /> Bảng Kanban công việc
+            </button>
+            <button
+              onClick={() => setActiveTab('code')}
+              style={{
+                background: activeTab === 'code' ? '#4f46e5' : '#1e293b',
+                color: '#fff',
+                border: '1px solid #334155',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Code2 size={15} /> Quản lý Code & Repositories
+            </button>
+            <button
+              onClick={() => setActiveTab('review')}
+              style={{
+                background: activeTab === 'review' ? '#4f46e5' : '#1e293b',
+                color: '#fff',
+                border: '1px solid #334155',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <FileCode size={15} /> Code Review & Bình luận
             </button>
           </div>
 
-          <div className="thanh-thong-ke-kanban">
-            <div className="the-thong-ke">
-              <div className="nen-icon-thong-ke" style={{ background: "rgba(99, 102, 241, 0.2)", color: "#818cf8" }}>
-                <FolderKanban size={20} />
+          {/* NỘI DUNG HIỂN THỊ THEO TAB ĐANG CHỌN */}
+          {activeTab === 'kanban' && (
+            <>
+              <div className="thanh-thong-ke-kanban">
+                <div className="the-thong-ke">
+                  <div className="nen-icon-thong-ke" style={{ background: "rgba(99, 102, 241, 0.2)", color: "#818cf8" }}>
+                    <FolderKanban size={20} />
+                  </div>
+                  <div className="thong-tin-thong-ke">
+                    <h5>Tổng công việc</h5>
+                    <p>{projectTasks.length} Tasks</p>
+                  </div>
+                </div>
+                <div className="the-thong-ke">
+                  <div className="nen-icon-thong-ke" style={{ background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24" }}>
+                    <Clock size={20} />
+                  </div>
+                  <div className="thong-tin-thong-ke">
+                    <h5>Đang thực hiện</h5>
+                    <p>{projectTasks.filter((t) => t.status === "in_progress").length} Tasks</p>
+                  </div>
+                </div>
+                <div className="the-thong-ke">
+                  <div className="nen-icon-thong-ke" style={{ background: "rgba(52, 211, 153, 0.2)", color: "#34d399" }}>
+                    <CheckSquare size={20} />
+                  </div>
+                  <div className="thong-tin-thong-ke">
+                    <h5>Hoàn thành</h5>
+                    <p>{projectTasks.filter((t) => t.status === "done").length} Tasks</p>
+                  </div>
+                </div>
+                <div className="the-thong-ke">
+                  <div className="nen-icon-thong-ke" style={{ background: "rgba(56, 189, 248, 0.2)", color: "#38bdf8" }}>
+                    <BarChart2 size={20} />
+                  </div>
+                  <div className="thong-tin-thong-ke">
+                    <h5>Tiến độ dự án</h5>
+                    <p>
+                      {projectTasks.length > 0
+                        ? Math.round(
+                            (projectTasks.filter((t) => t.status === "done").length /
+                              projectTasks.length) *
+                              100,
+                          )
+                        : 0}
+                      %
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="thong-tin-thong-ke">
-                <h5>Tổng công việc</h5>
-                <p>{projectTasks.length} Tasks</p>
-              </div>
-            </div>
-            <div className="the-thong-ke">
-              <div className="nen-icon-thong-ke" style={{ background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24" }}>
-                <Clock size={20} />
-              </div>
-              <div className="thong-tin-thong-ke">
-                <h5>Đang thực hiện</h5>
-                <p>{projectTasks.filter((t) => t.status === "in_progress").length} Tasks</p>
-              </div>
-            </div>
-            <div className="the-thong-ke">
-              <div className="nen-icon-thong-ke" style={{ background: "rgba(52, 211, 153, 0.2)", color: "#34d399" }}>
-                <CheckSquare size={20} />
-              </div>
-              <div className="thong-tin-thong-ke">
-                <h5>Hoàn thành</h5>
-                <p>{projectTasks.filter((t) => t.status === "done").length} Tasks</p>
-              </div>
-            </div>
-            <div className="the-thong-ke">
-              <div className="nen-icon-thong-ke" style={{ background: "rgba(56, 189, 248, 0.2)", color: "#38bdf8" }}>
-                <BarChart2 size={20} />
-              </div>
-              <div className="thong-tin-thong-ke">
-                <h5>Tiến độ dự án</h5>
-                <p>
-                  {projectTasks.length > 0
-                    ? Math.round(
-                        (projectTasks.filter((t) => t.status === "done").length /
-                          projectTasks.length) *
-                          100,
-                      )
-                    : 0}
-                  %
-                </p>
-              </div>
-            </div>
-          </div>
 
-          <KanbanBoard
-            projectTasks={projectTasks}
-            isLoadingTasks={isLoadingTasks}
-            changeTaskStatus={changeTaskStatus}
-            openTaskModal={openCreateTaskModal}
-            editTask={openEditTaskModal}
-            deleteTask={handleDeleteTask}
-          />
+              <KanbanBoard
+                projectTasks={projectTasks}
+                isLoadingTasks={isLoadingTasks}
+                changeTaskStatus={changeTaskStatus}
+                openTaskModal={openCreateTaskModal}
+                editTask={openEditTaskModal}
+                deleteTask={handleDeleteTask}
+              />
+            </>
+          )}
 
-          <WorkspacePanel
-            groupList={groupList}
-            memberList={memberList}
-            workspaceTab={workspaceTab}
-            setWorkspaceTab={setWorkspaceTab}
-            newGroupName={newGroupName}
-            setNewGroupName={setNewGroupName}
-            memberEmail={memberEmail}
-            setMemberEmail={setMemberEmail}
-            handleCreateGroupInline={handleCreateGroupInline}
-            handleInviteMemberInline={handleInviteMemberInline}
-          />
+          {activeTab === 'code' && (
+            <CodeManagement
+              repoList={repoList}
+              setRepoList={setRepoList}
+              commitList={commitList}
+              newRepoLink={newRepoLink}
+              setNewRepoLink={setNewRepoLink}
+              handleAddRepo={handleAddRepoInline}
+            />
+          )}
 
-          <CodeManagement
-            repoList={repoList}
-            setRepoList={setRepoList}
-            commitList={commitList}
-            newRepoLink={newRepoLink}
-            setNewRepoLink={setNewRepoLink}
-            handleAddRepo={handleAddRepoInline}
-          />
+          {activeTab === 'review' && (
+            <CodeReview showNotification={showNotification} />
+          )}
 
-          <CodeReview showNotification={showNotification} />
           <ProjectChat showNotification={showNotification} />
-          <MemberPermissions
-            memberList={memberList}
-            setMemberList={setMemberList}
-            showNotification={showNotification}
-          />
         </div>
       ) : (
         <>
