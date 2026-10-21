@@ -4,13 +4,17 @@ import { FileCode, Folder, MessageSquare, Send, RefreshCw, ExternalLink } from '
 const GITHUB_API = 'https://api.github.com';
 const MAX_FILE_SIZE = 500_000;
 
-function getLinkedRepo(projectId) {
-  try {
-    const saved = JSON.parse(localStorage.getItem(`devtask:github-repos:${projectId}`) || '[]');
-    return Array.isArray(saved) && typeof saved[0] === 'string' ? saved[0] : null;
-  } catch {
-    return null;
-  }
+async function getLinkedRepo(projectId, signal) {
+  const token = localStorage.getItem('access_token');
+  if (!token) throw new Error('Bạn chưa đăng nhập.');
+  const response = await fetch(`http://127.0.0.1:8000/api/projects/${projectId}/repository`, {
+    signal,
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (response.status === 404) return null;
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(typeof data?.detail === 'string' ? data.detail : `Lỗi HTTP ${response.status}`);
+  return data.repository_url;
 }
 
 function parseRepo(url) {
@@ -75,8 +79,8 @@ export default function CodeReview({ projectId, showNotification }) {
     setFileList([]);
     setRepository(null);
     try {
-      const link = getLinkedRepo(projectId);
-      if (!link) return;
+      const link = await getLinkedRepo(projectId, signal);
+      if (!link) { setError('Dự án chưa liên kết GitHub Repository.'); return; }
       const { owner, repo } = parseRepo(link);
       const base = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
       const info = await githubGet(base, signal);
