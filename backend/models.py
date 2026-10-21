@@ -1,13 +1,10 @@
-"""
-File định nghĩa bảng (model) cho PostgreSQL bằng SQLAlchemy.
-Đặt file này trong thư mục /backend.
-"""
+"""SQLAlchemy models và Pydantic schemas cho DevTask."""
 
 import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, Text, DateTime, ForeignKey, func
+from sqlalchemy import String, Text, DateTime, ForeignKey, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from pydantic import BaseModel, Field, EmailStr
@@ -15,14 +12,10 @@ from pydantic import BaseModel, Field, EmailStr
 from database import Base
 
 
-# ========== BẢNG TRONG DATABASE (SQLAlchemy ORM) ==========
-
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -32,56 +25,52 @@ class User(Base):
 class Project(Base):
     __tablename__ = "projects"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    owner_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
-    )
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     join_code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(50), default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ProjectMember(Base):
-    """Bảng trung gian: ai thuộc dự án nào, vai trò gì (owner/member)"""
     __tablename__ = "project_members"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
-    )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
-    )
-    role: Mapped[str] = mapped_column(String(50), default="member")  # owner | member
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    role: Mapped[str] = mapped_column(String(50), default="member")
 
 
 class Task(Base):
     __tablename__ = "tasks"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(50), default="todo")  # todo|in_progress|review|done
+    status: Mapped[str] = mapped_column(String(50), default="todo")
     priority: Mapped[str] = mapped_column(String(50), default="medium")
     deadline: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     assignee: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ProjectRepository(Base):
+    __tablename__ = "project_repositories"
+    __table_args__ = (
+        UniqueConstraint("project_id", name="uq_project_repositories_project_id"),
     )
 
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    repository_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    github_owner: Mapped[str] = mapped_column(String(100), nullable=False)
+    github_repo: Mapped[str] = mapped_column(String(100), nullable=False)
+    linked_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-# ========== SCHEMA CHO AUTH / USERS (Pydantic) ==========
 
 class UserRegister(BaseModel):
     name: str = Field(..., min_length=1)
@@ -113,8 +102,6 @@ class TokenOut(BaseModel):
     token_type: str = "bearer"
 
 
-# ========== SCHEMA CHO PROJECTS (Pydantic) ==========
-
 class ProjectCreate(BaseModel):
     name: str = Field(..., min_length=1)
 
@@ -137,8 +124,6 @@ class ProjectOut(BaseModel):
     member_count: int
     tasks: TaskSummary
 
-
-# ========== SCHEMA CHO TASKS (Pydantic) ==========
 
 ALLOWED_STATUS = {"todo", "in_progress", "review", "done"}
 ALLOWED_PRIORITY = {"low", "medium", "high"}
@@ -178,6 +163,23 @@ class TaskOut(BaseModel):
     assignee: Optional[str]
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ProjectRepositoryCreate(BaseModel):
+    repository_url: str = Field(..., min_length=1, max_length=500)
+
+
+class ProjectRepositoryOut(BaseModel):
+    id: uuid.UUID
+    project_id: uuid.UUID
+    repository_url: str
+    github_owner: str
+    github_repo: str
+    linked_by: uuid.UUID
+    created_at: datetime
 
     class Config:
         from_attributes = True

@@ -61,20 +61,12 @@ export default function ProjectManagement() {
 
   const [selectedProject, setSelectedProject] = useState(null);
   const [projectTasks, setProjectTasks] = useState([]);
+  const [projectMembers, setProjectMembers] = useState([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
 
   // State quản lý Tab trong chi tiết dự án ('kanban', 'code', 'review')
   const [activeTab, setActiveTab] = useState('kanban');
-
-  const [repoList, setRepoList] = useState([
-    { id: 1, name: "devtask-frontend-react", branch: "main", commits_count: 142, last_update: "10 phút trước" },
-    { id: 2, name: "devtask-backend-fastapi", branch: "dev", commits_count: 98, last_update: "1 giờ trước" },
-  ]);
-  const [commitList] = useState([
-    { id: "a1b2c3d", msg: "feat(auth): integrate OAuth2 & JWT token authentication", author: "Shut Heast", time: "10 phút trước" },
-    { id: "e5f6g7h", msg: "fix(kanban): resolve drag and drop status delay issue", author: "Trần Thị B", time: "1 giờ trước" },
-  ]);
-  const [newRepoLink, setNewRepoLink] = useState("");
 
   const [newProjectName, setNewProjectName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -104,6 +96,36 @@ export default function ProjectManagement() {
 
   useEffect(() => {
     if (selectedProject) fetchProjectTasks(selectedProject.id);
+  }, [selectedProject?.id]);
+
+  // Lấy danh sách thành viên của dự án để giao Task.
+  useEffect(() => {
+    const projectId = selectedProject?.id;
+    if (!projectId) {
+      setProjectMembers([]);
+      setIsLoadingMembers(false);
+      return;
+    }
+
+    let cancelled = false;
+    setProjectMembers([]);
+    setIsLoadingMembers(true);
+
+    sendAuthenticatedRequest(`/projects/${projectId}/members`)
+      .then((data) => {
+        if (!cancelled) setProjectMembers(Array.isArray(data) ? data : []);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setProjectMembers([]);
+          console.error("Không tải được danh sách thành viên:", error);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingMembers(false);
+      });
+
+    return () => { cancelled = true; };
   }, [selectedProject?.id]);
 
   const showNotification = (type, title, message) => {
@@ -302,18 +324,6 @@ export default function ProjectManagement() {
     }
   };
 
-  const handleAddRepoInline = (e) => {
-    e.preventDefault();
-    if (!newRepoLink.trim()) return;
-    const repoName = newRepoLink.split("/").pop().replace(".git", "") || newRepoLink;
-    setRepoList((prev) => [
-      ...prev,
-      { id: Date.now(), name: repoName, branch: "main", commits_count: 1, last_update: "Vừa xong" },
-    ]);
-    setNewRepoLink("");
-    showNotification("thanh-cong", "Kết nối thành công", "Đã liên kết Repository mới");
-  };
-
   const filteredProjects = projectList.filter((project) => {
     const matchesKeyword =
       project.name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
@@ -493,17 +503,17 @@ export default function ProjectManagement() {
 
           {activeTab === 'code' && (
             <CodeManagement
-              repoList={repoList}
-              setRepoList={setRepoList}
-              commitList={commitList}
-              newRepoLink={newRepoLink}
-              setNewRepoLink={setNewRepoLink}
-              handleAddRepo={handleAddRepoInline}
+              projectId={selectedProject.id}
+              role={selectedProject.role}
+              showNotification={showNotification}
             />
           )}
 
           {activeTab === 'review' && (
-            <CodeReview showNotification={showNotification} />
+            <CodeReview
+              projectId={selectedProject.id}
+              showNotification={showNotification}
+            />
           )}
 
           <ProjectChat showNotification={showNotification} />
@@ -713,13 +723,32 @@ export default function ProjectManagement() {
                 </div>
                 <div className="nhom-form-group">
                   <label className="nhan-form">Người thực hiện</label>
-                  <input
-                    type="text"
-                    className="input-form"
-                    placeholder="VD: Nguyễn Văn A"
+                  <select
+                    className="select-form"
                     value={taskForm.assignee}
                     onChange={(e) => setTaskForm({ ...taskForm, assignee: e.target.value })}
-                  />
+                    disabled={isLoadingMembers}
+                    style={{ width: "100%" }}
+                  >
+                    <option value="">
+                      {isLoadingMembers ? "Đang tải thành viên..." : "-- Chọn thành viên --"}
+                    </option>
+                    {taskForm.assignee && !projectMembers.some((member) => member.name === taskForm.assignee) && (
+                      <option value={taskForm.assignee}>
+                        {taskForm.assignee} (không còn trong danh sách)
+                      </option>
+                    )}
+                    {projectMembers.map((member) => (
+                      <option key={member.id} value={member.name}>
+                        {member.name}{member.role === "owner" ? " (Owner)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {!isLoadingMembers && projectMembers.length === 0 && (
+                    <small style={{ color: "#fbbf24", display: "block", marginTop: 6 }}>
+                      Chưa tải được thành viên. Kiểm tra API GET /api/projects/:id/members.
+                    </small>
+                  )}
                 </div>
               </div>
               <div className="nhom-form-group">
