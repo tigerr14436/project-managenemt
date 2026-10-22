@@ -22,7 +22,8 @@ import {
   AlertTriangle,
   BarChart2,
   FileCode,
-  Layers
+  Users,
+  Lock,
 } from "lucide-react";
 import "../ProjectManagement.css";
 
@@ -31,6 +32,7 @@ import KanbanBoard from "./KanbanBoard";
 import CodeManagement from "./CodeManagement";
 import CodeReview from "./CodeReview";
 import ProjectChat from "./ProjectChat";
+import GroupManagement from "./GroupManagement";
 
 async function sendAuthenticatedRequest(apiPath, options = {}) {
   const token = localStorage.getItem("access_token");
@@ -56,6 +58,9 @@ async function sendAuthenticatedRequest(apiPath, options = {}) {
 export default function ProjectManagement() {
   const navigate = useNavigate();
 
+  const currentUserName = "Shut Heast";
+  const currentUserEmail = "shutheast@devtask.vn";
+
   const [projectList, setProjectList] = useState([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
 
@@ -65,8 +70,32 @@ export default function ProjectManagement() {
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
 
-  // State quản lý Tab trong chi tiết dự án ('kanban', 'code', 'review')
-  const [activeTab, setActiveTab] = useState('kanban');
+  const [activeTab, setActiveTab] = useState("kanban");
+
+  // Danh sách Nhóm làm việc
+  const [groups, setGroups] = useState([
+    {
+      id: 101,
+      name: "Đội ngũ Backend API",
+      leader: "Shut Heast",
+      leaderEmail: "shutheast@devtask.vn",
+    },
+    {
+      id: 102,
+      name: "Đội ngũ Frontend React",
+      leader: "Nguyễn Văn A",
+      leaderEmail: "vana@devtask.vn",
+    },
+  ]);
+
+  // Phân quyền
+  const isProjectOwner =
+    selectedProject?.role === "owner" ||
+    selectedProject?.owner === currentUserName;
+  const isAnyGroupLeader = groups.some(
+    (g) => g.leaderEmail === currentUserEmail || g.leader === currentUserName,
+  );
+  const canManageKanban = isProjectOwner || isAnyGroupLeader;
 
   const [newProjectName, setNewProjectName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -98,34 +127,64 @@ export default function ProjectManagement() {
     if (selectedProject) fetchProjectTasks(selectedProject.id);
   }, [selectedProject?.id]);
 
-  // Lấy danh sách thành viên của dự án để giao Task.
   useEffect(() => {
     const projectId = selectedProject?.id;
     if (!projectId) {
       setProjectMembers([]);
-      setIsLoadingMembers(false);
       return;
     }
 
-    let cancelled = false;
-    setProjectMembers([]);
     setIsLoadingMembers(true);
-
     sendAuthenticatedRequest(`/projects/${projectId}/members`)
       .then((data) => {
-        if (!cancelled) setProjectMembers(Array.isArray(data) ? data : []);
+        setProjectMembers(
+          Array.isArray(data) && data.length > 0
+            ? data
+            : [
+                {
+                  id: 1,
+                  name: "Shut Heast",
+                  email: "shutheast@devtask.vn",
+                  role: "owner",
+                },
+                {
+                  id: 2,
+                  name: "Nguyễn Văn A",
+                  email: "vana@devtask.vn",
+                  role: "member",
+                },
+                {
+                  id: 3,
+                  name: "Trần Thị B",
+                  email: "thib@devtask.vn",
+                  role: "member",
+                },
+              ],
+        );
       })
-      .catch((error) => {
-        if (!cancelled) {
-          setProjectMembers([]);
-          console.error("Không tải được danh sách thành viên:", error);
-        }
+      .catch(() => {
+        setProjectMembers([
+          {
+            id: 1,
+            name: "Shut Heast",
+            email: "shutheast@devtask.vn",
+            role: "owner",
+          },
+          {
+            id: 2,
+            name: "Nguyễn Văn A",
+            email: "vana@devtask.vn",
+            role: "member",
+          },
+          {
+            id: 3,
+            name: "Trần Thị B",
+            email: "thib@devtask.vn",
+            role: "member",
+          },
+        ]);
       })
-      .finally(() => {
-        if (!cancelled) setIsLoadingMembers(false);
-      });
-
-    return () => { cancelled = true; };
+      .finally(() => setIsLoadingMembers(false));
   }, [selectedProject?.id]);
 
   const showNotification = (type, title, message) => {
@@ -159,7 +218,9 @@ export default function ProjectManagement() {
   const fetchProjectTasks = async (projectId) => {
     setIsLoadingTasks(true);
     try {
-      const data = await sendAuthenticatedRequest(`/tasks?project_id=${projectId}`);
+      const data = await sendAuthenticatedRequest(
+        `/tasks?project_id=${projectId}`,
+      );
       setProjectTasks(data || []);
     } catch (error) {
       showNotification("loi", "Không tải được công việc", error.message);
@@ -178,7 +239,11 @@ export default function ProjectManagement() {
         body: JSON.stringify({ name: newProjectName.trim() }),
       });
       setProjectList((prev) => [newProject, ...prev]);
-      showNotification("thanh-cong", "Thành công", `Đã khởi tạo dự án "${newProject.name}"`);
+      showNotification(
+        "thanh-cong",
+        "Thành công",
+        `Đã khởi tạo dự án "${newProject.name}"`,
+      );
       setNewProjectName("");
     } catch (error) {
       showNotification("loi", "Không tạo được dự án", error.message);
@@ -197,7 +262,11 @@ export default function ProjectManagement() {
         body: JSON.stringify({ join_code: joinCode.trim() }),
       });
       setProjectList((prev) => [joinedProject, ...prev]);
-      showNotification("thanh-cong", "Tham gia thành công", `Bạn đã vào dự án "${joinedProject.name}"`);
+      showNotification(
+        "thanh-cong",
+        "Tham gia thành công",
+        `Bạn đã vào dự án "${joinedProject.name}"`,
+      );
       setJoinCode("");
     } catch (error) {
       showNotification("loi", "Lỗi tham gia", error.message);
@@ -209,17 +278,26 @@ export default function ProjectManagement() {
   const copyJoinCode = (code, id) => {
     navigator.clipboard.writeText(code);
     setCopiedId(id);
-    showNotification("thong-tin", "Đã sao chép", `Mã tham gia ${code} đã lưu vào bộ nhớ tạm`);
+    showNotification(
+      "thong-tin",
+      "Đã sao chép",
+      `Mã tham gia ${code} đã lưu vào bộ nhớ tạm`,
+    );
     setTimeout(() => setCopiedId(null), 2000);
   };
 
   const handleDeleteProject = async (id, name) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa/rời khỏi dự án "${name}"?`)) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa/rời khỏi dự án "${name}"?`))
+      return;
     try {
       await sendAuthenticatedRequest(`/projects/${id}`, { method: "DELETE" });
       setProjectList((prev) => prev.filter((item) => item.id !== id));
       if (selectedProject?.id === id) setSelectedProject(null);
-      showNotification("can-bao", "Đã xóa dự án", `Đã gỡ bỏ "${name}" khỏi danh sách`);
+      showNotification(
+        "can-bao",
+        "Đã xóa dự án",
+        `Đã gỡ bỏ "${name}" khỏi danh sách`,
+      );
     } catch (error) {
       showNotification("loi", "Không xóa được dự án", error.message);
     }
@@ -228,6 +306,7 @@ export default function ProjectManagement() {
   const changeTaskStatus = async (taskId, targetStatus) => {
     const originalTask = projectTasks.find((t) => t.id === taskId);
     if (!originalTask) return;
+
     setProjectTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, status: targetStatus } : t)),
     );
@@ -236,7 +315,11 @@ export default function ProjectManagement() {
         method: "PUT",
         body: JSON.stringify({ status: targetStatus }),
       });
-      showNotification("thong-tin", "Cập nhật tiến độ", "Đã lưu thay đổi vào hệ thống");
+      showNotification(
+        "thong-tin",
+        "Cập nhật tiến độ",
+        "Đã lưu thay đổi vào hệ thống",
+      );
     } catch (error) {
       setProjectTasks((prev) =>
         prev.map((t) => (t.id === taskId ? originalTask : t)),
@@ -247,27 +330,44 @@ export default function ProjectManagement() {
 
   const handleSaveTask = async (e) => {
     e.preventDefault();
+    if (!canManageKanban) {
+      showNotification(
+        "loi",
+        "Quyền truy cập",
+        "Bạn không phải Trưởng nhóm hoặc Chủ dự án để chỉnh sửa task!",
+      );
+      return;
+    }
     if (!taskForm.title.trim() || !selectedProject) return;
 
     try {
       if (editingTaskId) {
-        const updatedTask = await sendAuthenticatedRequest(`/tasks/${editingTaskId}`, {
-          method: "PUT",
-          body: JSON.stringify({
-            title: taskForm.title.trim(),
-            description: taskForm.description || null,
-            status: currentTaskColumn,
-            priority: taskForm.priority,
-            assignee: taskForm.assignee || null,
-            deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
-          }),
-        });
+        const updatedTask = await sendAuthenticatedRequest(
+          `/tasks/${editingTaskId}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              title: taskForm.title.trim(),
+              description: taskForm.description || null,
+              status: currentTaskColumn,
+              priority: taskForm.priority,
+              assignee: taskForm.assignee || null,
+              deadline: taskForm.deadline
+                ? new Date(taskForm.deadline).toISOString()
+                : null,
+            }),
+          },
+        );
         setProjectTasks((prev) =>
           prev.map((t) =>
             t.id === editingTaskId ? updatedTask || { ...t, ...taskForm } : t,
           ),
         );
-        showNotification("thanh-cong", "Cập nhật công việc", `Đã lưu thay đổi cho "${taskForm.title}"`);
+        showNotification(
+          "thanh-cong",
+          "Cập nhật công việc",
+          `Đã lưu thay đổi cho "${taskForm.title}"`,
+        );
       } else {
         const newTask = await sendAuthenticatedRequest("/tasks", {
           method: "POST",
@@ -278,22 +378,42 @@ export default function ProjectManagement() {
             status: currentTaskColumn,
             priority: taskForm.priority,
             assignee: taskForm.assignee || null,
-            deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
+            deadline: taskForm.deadline
+              ? new Date(taskForm.deadline).toISOString()
+              : null,
           }),
         });
         setProjectTasks((prev) => [newTask, ...prev]);
-        showNotification("thanh-cong", "Thêm công việc", `Đã tạo "${taskForm.title}"`);
+        showNotification(
+          "thanh-cong",
+          "Thêm công việc",
+          `Đã tạo "${taskForm.title}"`,
+        );
       }
 
       setIsTaskModalOpen(false);
       setEditingTaskId(null);
-      setTaskForm({ title: "", description: "", priority: "medium", assignee: "", deadline: "" });
+      setTaskForm({
+        title: "",
+        description: "",
+        priority: "medium",
+        assignee: "",
+        deadline: "",
+      });
     } catch (error) {
       showNotification("loi", "Không lưu được task", error.message);
     }
   };
 
   const openEditTaskModal = (task) => {
+    if (!canManageKanban) {
+      showNotification(
+        "can-bao",
+        "Hạn chế quyền",
+        "Chỉ Trưởng nhóm hoặc Chủ dự án mới có thể chỉnh sửa Task.",
+      );
+      return;
+    }
     setEditingTaskId(task.id);
     setCurrentTaskColumn(task.status);
     setTaskForm({
@@ -307,13 +427,35 @@ export default function ProjectManagement() {
   };
 
   const openCreateTaskModal = (columnKey) => {
+    if (!canManageKanban) {
+      showNotification(
+        "can-bao",
+        "Hạn chế quyền",
+        "Chỉ Trưởng nhóm hoặc Chủ dự án mới có quyền tạo Task mới.",
+      );
+      return;
+    }
     setEditingTaskId(null);
     setCurrentTaskColumn(columnKey);
-    setTaskForm({ title: "", description: "", priority: "medium", assignee: "", deadline: "" });
+    setTaskForm({
+      title: "",
+      description: "",
+      priority: "medium",
+      assignee: "",
+      deadline: "",
+    });
     setIsTaskModalOpen(true);
   };
 
   const handleDeleteTask = async (taskId, title) => {
+    if (!canManageKanban) {
+      showNotification(
+        "loi",
+        "Hạn chế quyền",
+        "Chỉ Trưởng nhóm hoặc Chủ dự án mới có quyền xóa Task.",
+      );
+      return;
+    }
     if (!window.confirm(`Bạn có chắc chắn muốn xóa task "${title}"?`)) return;
     try {
       await sendAuthenticatedRequest(`/tasks/${taskId}`, { method: "DELETE" });
@@ -328,7 +470,8 @@ export default function ProjectManagement() {
     const matchesKeyword =
       project.name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
       project.join_code.toLowerCase().includes(searchKeyword.toLowerCase());
-    const matchesStatus = statusFilter === "all" || project.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all" || project.status === statusFilter;
     return matchesKeyword && matchesStatus;
   });
 
@@ -347,7 +490,10 @@ export default function ProjectManagement() {
               <div className="tieu-de-thong-bao">{toast.title}</div>
               <div className="chi-tiet-thong-bao">{toast.message}</div>
             </div>
-            <button className="nut-dong-toast" onClick={() => removeToast(toast.id)}>
+            <button
+              className="nut-dong-toast"
+              onClick={() => removeToast(toast.id)}
+            >
               <X size={16} />
             </button>
           </div>
@@ -356,8 +502,11 @@ export default function ProjectManagement() {
 
       {selectedProject ? (
         <div>
-          <div className="phan-header-kanban" style={{ marginBottom: '16px' }}>
-            <button className="nut-quay-lai" onClick={() => setSelectedProject(null)}>
+          <div className="phan-header-kanban" style={{ marginBottom: "16px" }}>
+            <button
+              className="nut-quay-lai"
+              onClick={() => setSelectedProject(null)}
+            >
               <ArrowLeft size={16} />
               <span>Quay lại Danh sách Dự án</span>
             </button>
@@ -367,84 +516,173 @@ export default function ProjectManagement() {
               </div>
               <div>
                 <h3 className="tieu-de-du-an-kanban">{selectedProject.name}</h3>
-                <span className="nhan-ma-moi">
-                  Mã tham gia:{" "}
-                  <strong style={{ color: "#38bdf8" }}>{selectedProject.join_code}</strong>
+                <span
+                  className="nhan-ma-moi"
+                  style={{
+                    display: "flex",
+                    gap: "8px",
+                    alignItems: "center",
+                    marginTop: "4px",
+                  }}
+                >
+                  <span>
+                    Mã:{" "}
+                    <strong style={{ color: "#38bdf8" }}>
+                      {selectedProject.join_code}
+                    </strong>
+                  </span>
+                  <span
+                    style={{
+                      background: isProjectOwner
+                        ? "#6366f1"
+                        : isAnyGroupLeader
+                          ? "#f59e0b"
+                          : "#334155",
+                      color: "#fff",
+                      padding: "2px 8px",
+                      borderRadius: "4px",
+                      fontSize: "11px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {isProjectOwner
+                      ? "Chủ dự án (Owner)"
+                      : isAnyGroupLeader
+                        ? "Trưởng nhóm (Leader)"
+                        : "Thành viên (Member)"}
+                  </span>
                 </span>
               </div>
             </div>
-            {activeTab === 'kanban' && (
-              <button className="nut-chinh" onClick={() => openCreateTaskModal("todo")}>
+            {activeTab === "kanban" && canManageKanban && (
+              <button
+                className="nut-chinh"
+                onClick={() => openCreateTaskModal("todo")}
+              >
                 <Plus size={16} />
                 <span>Tạo Task Mới</span>
               </button>
             )}
           </div>
 
-          {/* THANH TAB CHUYỂN ĐỔI GIAO DIỆN TRONG DỰ ÁN */}
-          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #334155', paddingBottom: '12px', marginBottom: '20px' }}>
+          {/* TAB CHUYỂN ĐỔI GIAO DIỆN */}
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              borderBottom: "1px solid #334155",
+              paddingBottom: "12px",
+              marginBottom: "20px",
+              flexWrap: "wrap",
+            }}
+          >
             <button
-              onClick={() => setActiveTab('kanban')}
+              onClick={() => setActiveTab("kanban")}
               style={{
-                background: activeTab === 'kanban' ? '#4f46e5' : '#1e293b',
-                color: '#fff',
-                border: '1px solid #334155',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                fontSize: '13px',
+                background: activeTab === "kanban" ? "#4f46e5" : "#1e293b",
+                color: "#fff",
+                border: "1px solid #334155",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                fontSize: "13px",
                 fontWeight: 600,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
               }}
             >
-              <FolderKanban size={15} /> Bảng Kanban công việc
+              <FolderKanban size={15} /> Bảng Kanban
             </button>
             <button
-              onClick={() => setActiveTab('code')}
+              onClick={() => setActiveTab("groups")}
               style={{
-                background: activeTab === 'code' ? '#4f46e5' : '#1e293b',
-                color: '#fff',
-                border: '1px solid #334155',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                fontSize: '13px',
+                background: activeTab === "groups" ? "#4f46e5" : "#1e293b",
+                color: "#fff",
+                border: "1px solid #334155",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                fontSize: "13px",
                 fontWeight: 600,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
               }}
             >
-              <Code2 size={15} /> Quản lý Code & Repositories
+              <Users size={15} /> Nhóm & Phân quyền Trưởng nhóm
             </button>
             <button
-              onClick={() => setActiveTab('review')}
+              onClick={() => setActiveTab("code")}
               style={{
-                background: activeTab === 'review' ? '#4f46e5' : '#1e293b',
-                color: '#fff',
-                border: '1px solid #334155',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                fontSize: '13px',
+                background: activeTab === "code" ? "#4f46e5" : "#1e293b",
+                color: "#fff",
+                border: "1px solid #334155",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                fontSize: "13px",
                 fontWeight: 600,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
               }}
             >
-              <FileCode size={15} /> Code Review & Bình luận
+              <Code2 size={15} /> Quản lý Code
+            </button>
+            <button
+              onClick={() => setActiveTab("review")}
+              style={{
+                background: activeTab === "review" ? "#4f46e5" : "#1e293b",
+                color: "#fff",
+                border: "1px solid #334155",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <FileCode size={15} /> Code Review
             </button>
           </div>
 
-          {/* NỘI DUNG HIỂN THỊ THEO TAB ĐANG CHỌN */}
-          {activeTab === 'kanban' && (
+          {/* 1. BẢNG KANBAN */}
+          {activeTab === "kanban" && (
             <>
+              {!canManageKanban && (
+                <div
+                  style={{
+                    background: "rgba(245, 158, 11, 0.1)",
+                    border: "1px solid rgba(245, 158, 11, 0.3)",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    color: "#fbbf24",
+                    fontSize: "13px",
+                    marginBottom: "16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <Lock size={16} /> Bạn đang truy cập dưới quyền Thành viên.
+                  Chỉ Trưởng nhóm hoặc Chủ dự án mới có quyền Thêm / Sửa / Xóa
+                  công việc.
+                </div>
+              )}
+
               <div className="thanh-thong-ke-kanban">
                 <div className="the-thong-ke">
-                  <div className="nen-icon-thong-ke" style={{ background: "rgba(99, 102, 241, 0.2)", color: "#818cf8" }}>
+                  <div
+                    className="nen-icon-thong-ke"
+                    style={{
+                      background: "rgba(99, 102, 241, 0.2)",
+                      color: "#818cf8",
+                    }}
+                  >
                     <FolderKanban size={20} />
                   </div>
                   <div className="thong-tin-thong-ke">
@@ -453,25 +691,52 @@ export default function ProjectManagement() {
                   </div>
                 </div>
                 <div className="the-thong-ke">
-                  <div className="nen-icon-thong-ke" style={{ background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24" }}>
+                  <div
+                    className="nen-icon-thong-ke"
+                    style={{
+                      background: "rgba(245, 158, 11, 0.2)",
+                      color: "#fbbf24",
+                    }}
+                  >
                     <Clock size={20} />
                   </div>
                   <div className="thong-tin-thong-ke">
                     <h5>Đang thực hiện</h5>
-                    <p>{projectTasks.filter((t) => t.status === "in_progress").length} Tasks</p>
+                    <p>
+                      {
+                        projectTasks.filter((t) => t.status === "in_progress")
+                          .length
+                      }{" "}
+                      Tasks
+                    </p>
                   </div>
                 </div>
                 <div className="the-thong-ke">
-                  <div className="nen-icon-thong-ke" style={{ background: "rgba(52, 211, 153, 0.2)", color: "#34d399" }}>
+                  <div
+                    className="nen-icon-thong-ke"
+                    style={{
+                      background: "rgba(52, 211, 153, 0.2)",
+                      color: "#34d399",
+                    }}
+                  >
                     <CheckSquare size={20} />
                   </div>
                   <div className="thong-tin-thong-ke">
                     <h5>Hoàn thành</h5>
-                    <p>{projectTasks.filter((t) => t.status === "done").length} Tasks</p>
+                    <p>
+                      {projectTasks.filter((t) => t.status === "done").length}{" "}
+                      Tasks
+                    </p>
                   </div>
                 </div>
                 <div className="the-thong-ke">
-                  <div className="nen-icon-thong-ke" style={{ background: "rgba(56, 189, 248, 0.2)", color: "#38bdf8" }}>
+                  <div
+                    className="nen-icon-thong-ke"
+                    style={{
+                      background: "rgba(56, 189, 248, 0.2)",
+                      color: "#38bdf8",
+                    }}
+                  >
                     <BarChart2 size={20} />
                   </div>
                   <div className="thong-tin-thong-ke">
@@ -479,7 +744,8 @@ export default function ProjectManagement() {
                     <p>
                       {projectTasks.length > 0
                         ? Math.round(
-                            (projectTasks.filter((t) => t.status === "done").length /
+                            (projectTasks.filter((t) => t.status === "done")
+                              .length /
                               projectTasks.length) *
                               100,
                           )
@@ -497,11 +763,25 @@ export default function ProjectManagement() {
                 openTaskModal={openCreateTaskModal}
                 editTask={openEditTaskModal}
                 deleteTask={handleDeleteTask}
+                canManage={canManageKanban}
               />
             </>
           )}
 
-          {activeTab === 'code' && (
+          {/* 2. TAB QUẢN LÝ NHÓM (GỌI COMPONENT VỪA TÁCH)[cite: 11] */}
+          {activeTab === "groups" && (
+            <GroupManagement
+              groups={groups}
+              setGroups={setGroups}
+              projectMembers={projectMembers}
+              isProjectOwner={isProjectOwner}
+              currentUserName={currentUserName}
+              showNotification={showNotification}
+            />
+          )}
+
+          {/* 3. CODE MANAGEMENT */}
+          {activeTab === "code" && (
             <CodeManagement
               projectId={selectedProject.id}
               role={selectedProject.role}
@@ -509,21 +789,23 @@ export default function ProjectManagement() {
             />
           )}
 
-          {activeTab === 'review' && (
+          {/* 4. CODE REVIEW */}
+          {activeTab === "review" && (
             <CodeReview
               projectId={selectedProject.id}
               showNotification={showNotification}
             />
           )}
 
-          <ProjectChat showNotification={showNotification} />
+          
         </div>
       ) : (
         <>
           <div className="tieu-de-trang-quan-ly">
             <h2 className="tieu-de-chinh">Quản lý Dự án</h2>
             <p className="tieu-de-phu">
-              Khởi tạo dự án mới, theo dõi tiến độ và làm việc nhóm hiệu quả
+              Khởi tạo dự án mới, phân quyền Trưởng nhóm và theo dõi tiến độ
+              công việc
             </p>
           </div>
 
@@ -534,7 +816,8 @@ export default function ProjectManagement() {
               </div>
               <h3>Tạo Dự Án Mới</h3>
               <p className="mo-ta-the">
-                Thiết lập không gian quản lý tiến độ và công việc riêng cho đội ngũ của bạn
+                Thiết lập không gian quản lý tiến độ và công việc riêng cho đội
+                ngũ của bạn
               </p>
               <form onSubmit={handleCreateProject} className="form-hanh-dong">
                 <div className="nhom-nhap-lieu">
@@ -548,8 +831,16 @@ export default function ProjectManagement() {
                     required
                   />
                 </div>
-                <button type="submit" disabled={isCreatingProject} className="nut-chinh">
-                  {isCreatingProject ? <Loader2 size={16} className="icon-quay" /> : <FolderPlus size={16} />}
+                <button
+                  type="submit"
+                  disabled={isCreatingProject}
+                  className="nut-chinh"
+                >
+                  {isCreatingProject ? (
+                    <Loader2 size={16} className="icon-quay" />
+                  ) : (
+                    <FolderPlus size={16} />
+                  )}
                   <span>{isCreatingProject ? "Đang tạo..." : "Tạo Dự Án"}</span>
                 </button>
               </form>
@@ -561,7 +852,8 @@ export default function ProjectManagement() {
               </div>
               <h3>Tham Gia Dự Án</h3>
               <p className="mo-ta-the">
-                Nhập mã mời (Join Code) được chia sẻ từ quản trị viên để tham gia
+                Nhập mã mời (Join Code) được chia sẻ từ quản trị viên để tham
+                gia
               </p>
               <form onSubmit={handleJoinProject} className="form-hanh-dong">
                 <div className="nhom-nhap-lieu">
@@ -575,9 +867,19 @@ export default function ProjectManagement() {
                     required
                   />
                 </div>
-                <button type="submit" disabled={isJoiningProject} className="nut-phu">
-                  {isJoiningProject ? <Loader2 size={16} className="icon-quay" /> : <ArrowRight size={16} />}
-                  <span>{isJoiningProject ? "Đang tham gia..." : "Tham Gia Ngay"}</span>
+                <button
+                  type="submit"
+                  disabled={isJoiningProject}
+                  className="nut-phu"
+                >
+                  {isJoiningProject ? (
+                    <Loader2 size={16} className="icon-quay" />
+                  ) : (
+                    <ArrowRight size={16} />
+                  )}
+                  <span>
+                    {isJoiningProject ? "Đang tham gia..." : "Tham Gia Ngay"}
+                  </span>
                 </button>
               </form>
             </div>
@@ -676,14 +978,23 @@ export default function ProjectManagement() {
         </>
       )}
 
+      {/* Modal Task */}
       {isTaskModalOpen && (
-        <div className="lop-phu-modal" onClick={() => setIsTaskModalOpen(false)}>
+        <div
+          className="lop-phu-modal"
+          onClick={() => setIsTaskModalOpen(false)}
+        >
           <div className="noi-dung-modal" onClick={(e) => e.stopPropagation()}>
             <div className="header-modal">
               <h4 className="tieu-de-modal">
-                {editingTaskId ? "Chỉnh Sửa Công Việc" : "Tạo Task Mới cho Dự Án"}
+                {editingTaskId
+                  ? "Chỉnh Sửa Công Việc"
+                  : "Tạo Task Mới cho Dự Án"}
               </h4>
-              <button className="nut-dong-modal" onClick={() => setIsTaskModalOpen(false)}>
+              <button
+                className="nut-dong-modal"
+                onClick={() => setIsTaskModalOpen(false)}
+              >
                 <X size={18} />
               </button>
             </div>
@@ -695,7 +1006,9 @@ export default function ProjectManagement() {
                   className="input-form"
                   placeholder="VD: Thiết kế API Đăng nhập OAuth2..."
                   value={taskForm.title}
-                  onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                  onChange={(e) =>
+                    setTaskForm({ ...taskForm, title: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -705,7 +1018,9 @@ export default function ProjectManagement() {
                   className="textarea-form"
                   placeholder="Yêu cầu công việc, tài liệu tham khảo..."
                   value={taskForm.description}
-                  onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                  onChange={(e) =>
+                    setTaskForm({ ...taskForm, description: e.target.value })
+                  }
                 />
               </div>
               <div className="luoi-hai-cot-modal">
@@ -714,7 +1029,9 @@ export default function ProjectManagement() {
                   <select
                     className="select-form"
                     value={taskForm.priority}
-                    onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
+                    onChange={(e) =>
+                      setTaskForm({ ...taskForm, priority: e.target.value })
+                    }
                   >
                     <option value="low">Thấp</option>
                     <option value="medium">Trung bình</option>
@@ -726,29 +1043,23 @@ export default function ProjectManagement() {
                   <select
                     className="select-form"
                     value={taskForm.assignee}
-                    onChange={(e) => setTaskForm({ ...taskForm, assignee: e.target.value })}
+                    onChange={(e) =>
+                      setTaskForm({ ...taskForm, assignee: e.target.value })
+                    }
                     disabled={isLoadingMembers}
                     style={{ width: "100%" }}
                   >
                     <option value="">
-                      {isLoadingMembers ? "Đang tải thành viên..." : "-- Chọn thành viên --"}
+                      {isLoadingMembers
+                        ? "Đang tải thành viên..."
+                        : "-- Chọn thành viên --"}
                     </option>
-                    {taskForm.assignee && !projectMembers.some((member) => member.name === taskForm.assignee) && (
-                      <option value={taskForm.assignee}>
-                        {taskForm.assignee} (không còn trong danh sách)
-                      </option>
-                    )}
                     {projectMembers.map((member) => (
                       <option key={member.id} value={member.name}>
-                        {member.name}{member.role === "owner" ? " (Owner)" : ""}
+                        {member.name} {member.email ? `(${member.email})` : ""}
                       </option>
                     ))}
                   </select>
-                  {!isLoadingMembers && projectMembers.length === 0 && (
-                    <small style={{ color: "#fbbf24", display: "block", marginTop: 6 }}>
-                      Chưa tải được thành viên. Kiểm tra API GET /api/projects/:id/members.
-                    </small>
-                  )}
                 </div>
               </div>
               <div className="nhom-form-group">
@@ -757,7 +1068,9 @@ export default function ProjectManagement() {
                   type="date"
                   className="input-form"
                   value={taskForm.deadline}
-                  onChange={(e) => setTaskForm({ ...taskForm, deadline: e.target.value })}
+                  onChange={(e) =>
+                    setTaskForm({ ...taskForm, deadline: e.target.value })
+                  }
                 />
               </div>
               <div className="chan-modal">

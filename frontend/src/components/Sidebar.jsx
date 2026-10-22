@@ -33,13 +33,7 @@ export default function Sidebar({ isSidebarOpen, setIsSidebarOpen, isAuthenticat
             <FolderKanban size={18} className="nav-icon" />
             <span>Quản lý Dự án</span>
           </Link>
-          <Link
-            to="/group-management"
-            className={`nav-item ${location.pathname === "/group-management" ? "active" : ""}`}
-          >
-            <Building2 size={18} className="nav-icon" />
-            <span>Quản lý nhóm</span>
-          </Link>
+          
           <Link
             to="/profile"
             className={`nav-item ${location.pathname === "/profile" ? "active" : ""}`}
