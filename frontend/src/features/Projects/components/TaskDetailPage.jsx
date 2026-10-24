@@ -1,213 +1,122 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, User, GitCommit, FileCode, MessageSquare, Send, Timer, Play, Pause, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Clock, User, MessageSquare, Send, Users, ClipboardList, Loader2, AlertCircle } from 'lucide-react';
+
+const API_BASE = 'http://127.0.0.1:8000/api';
+
+function displayDate(value) {
+  if (!value) return 'Chưa đặt hạn';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Không xác định' : date.toLocaleDateString('vi-VN');
+}
+
+const priorities = { high: 'Cao', medium: 'Trung bình', low: 'Thấp' };
+const statuses = { todo: 'Cần làm', in_progress: 'Đang làm', review: 'Kiểm thử / Review', done: 'Hoàn thành' };
 
 export default function TaskDetailPage() {
   const { taskId } = useParams();
   const navigate = useNavigate();
-
-  // Dữ liệu mẫu của task (Trong thực tế bạn có thể gọi API lấy thông tin task dựa vào taskId)
-  const [task, setTask] = useState({
-    id: taskId,
-    title: "Thiết kế API Đăng nhập OAuth2",
-    description: "Xây dựng luồng xác thực người dùng sử dụng JWT token và tích hợp đăng nhập mạng xã hội.",
-    priority: "high",
-    assignee: "Shut Heast",
-    deadline: "2026-06-30",
-    status: "in_progress"
-  });
-
-  const [taskComments, setTaskComments] = useState([
-    { id: 1, author: "Shut Heast", content: "Đã liên kết nhánh dev vào task này.", time: "15 phút trước" },
-  ]);
-  const [newTaskComment, setNewTaskComment] = useState("");
-
-  // State Pomodoro Thông Minh
-  const [pomoMode, setPomoMode] = useState("work"); 
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [isPomoRunning, setIsPomoRunning] = useState(false);
-  const [completedPomodoros, setCompletedPomodoros] = useState(0);
+  const [task, setTask] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [taskComments, setTaskComments] = useState([]);
+  const [newTaskComment, setNewTaskComment] = useState('');
 
   useEffect(() => {
-    let timer = null;
-    if (isPomoRunning && timeLeft > 0) {
-      timer = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && isPomoRunning) {
-      setIsPomoRunning(false);
-      if (pomoMode === "work") {
-        setCompletedPomodoros((prev) => prev + 1);
-        alert("Hoàn thành phiên Pomodoro! Đã ghi nhận 1 phiên làm việc cho task này.");
+    const controller = new AbortController();
+    async function loadTask() {
+      setLoading(true);
+      setError('');
+      setTask(null);
+      setTaskComments([]);
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) throw new Error('Bạn chưa đăng nhập.');
+        const response = await fetch(`${API_BASE}/tasks/${encodeURIComponent(taskId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          const detail = data?.detail;
+          throw new Error(typeof detail === 'string' ? detail : `Không tải được công việc (HTTP ${response.status}).`);
+        }
+        setTask(data);
+      } catch (err) {
+        if (err.name !== 'AbortError') setError(err.message || 'Không thể kết nối Backend.');
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
-    return () => clearInterval(timer);
-  }, [isPomoRunning, timeLeft, pomoMode]);
+    loadTask();
+    return () => controller.abort();
+  }, [taskId]);
 
-  const switchPomoMode = (mode) => {
-    setIsPomoRunning(false);
-    setPomoMode(mode);
-    if (mode === "work") setTimeLeft(25 * 60);
-    else if (mode === "shortBreak") setTimeLeft(5 * 60);
-    else if (mode === "longBreak") setTimeLeft(15 * 60);
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const handleSendComment = (e) => {
-    e.preventDefault();
+  function handleSendComment(event) {
+    event.preventDefault();
     if (!newTaskComment.trim()) return;
-    setTaskComments((prev) => [
-      ...prev,
-      { id: Date.now(), author: "Shut Heast", content: newTaskComment.trim(), time: "Vừa xong" }
-    ]);
-    setNewTaskComment("");
-  };
+    setTaskComments((previous) => [...previous, {
+      id: Date.now(), author: localStorage.getItem('user_email') || 'Bạn',
+      content: newTaskComment.trim(), time: 'Vừa xong',
+    }]);
+    setNewTaskComment('');
+  }
 
   return (
     <div className="khung-quan-ly-du-an" style={{ padding: '24px', maxWidth: '900px', margin: '0 auto' }}>
-      <button 
-        onClick={() => navigate('/project')} 
-        style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', marginBottom: '20px' }}
-      >
-        <ArrowLeft size={16} /> Quay lại Dự án / Kanban
+      <button onClick={() => navigate('/project', { state: { returnProjectId: task?.project_id, returnTab: 'kanban' } })} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#1e293b', color: '#94a3b8', border: '1px solid #334155', padding: '8px 14px', borderRadius: 8, cursor: 'pointer', marginBottom: 20 }}>
+        <ArrowLeft size={16} /> Quay lại nhóm / Kanban
       </button>
 
-      <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', padding: '24px' }}>
-        
-        {/* Tiêu đề & Mức độ ưu tiên */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', borderBottom: '1px solid #334155', paddingBottom: '16px' }}>
-          <span className={`nhan-muc-do ${task.priority === 'high' ? 'cao' : task.priority === 'medium' ? 'trung-binh' : 'thap'}`}>
-            {task.priority === 'high' ? 'Cao' : task.priority === 'medium' ? 'Trung bình' : 'Thấp'}
-          </span>
-          <h2 style={{ color: '#f8fafc', fontSize: '20px', margin: 0 }}>{task.title}</h2>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px' }}>
-          
-          {/* Cột bên trái: Mô tả, Code & Thảo luận */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={{ color: '#94a3b8', fontSize: '12px', display: 'block', marginBottom: '6px' }}>Mô tả chi tiết</label>
-              <p style={{ background: '#0f172a', padding: '14px', borderRadius: '8px', border: '1px solid #334155', color: '#f8fafc', fontSize: '14px', margin: 0, lineHeight: '1.5' }}>
-                {task.description}
+      <style>{`@media (max-width: 720px) { .task-detail-layout { grid-template-columns: minmax(0, 1fr) !important; } }`}</style>
+      {loading && <div className="trang-thai-trong"><Loader2 size={24} className="icon-quay" /> Đang tải nội dung Task...</div>}
+      {!loading && error && <div role="alert" style={{ padding: 18, color: '#fca5a5', background: '#1e293b', borderRadius: 10 }}><AlertCircle size={18} style={{ verticalAlign: 'middle', marginRight: 8 }} />{error}</div>}
+      {!loading && !error && task && (
+        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 16, padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, borderBottom: '1px solid #334155', paddingBottom: 16, flexWrap: 'wrap' }}>
+            <span className={`nhan-muc-do ${task.priority === 'high' ? 'cao' : task.priority === 'medium' ? 'trung-binh' : 'thap'}`}>{priorities[task.priority] || 'Chưa xác định'}</span>
+            <h2 style={{ color: '#f8fafc', fontSize: 20, margin: 0 }}>{task.title}</h2>
+            <span style={{ fontSize: 12, color: '#94a3b8' }}>{statuses[task.status] || task.status}</span>
+          </div>
+          <div className="task-detail-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ color: '#94a3b8', fontSize: 12, display: 'block', marginBottom: 6 }}>Mô tả chi tiết</label>
+                <p style={{ background: '#0f172a', padding: 14, borderRadius: 8, border: '1px solid #334155', color: '#f8fafc', fontSize: 14, margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{task.description || 'Chưa có mô tả chi tiết'}</p>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, background: '#0f172a', padding: 12, borderRadius: 8, border: '1px solid #334155' }}>
+                <div><span style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 2 }}>Người thực hiện</span><span style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}><User size={14} style={{ color: '#38bdf8' }} /> {task.assignee || 'Chưa phân công'}</span></div>
+                <div><span style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 2 }}>Hạn hoàn thành</span><span style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}><Clock size={14} style={{ color: '#fbbf24' }} /> {displayDate(task.deadline)}</span></div>
+              </div>
+              <div style={{ background: '#0f172a', padding: 16, borderRadius: 12, border: '1px solid #334155' }}>
+                <h5 style={{ fontSize: 13, color: '#34d399', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}><MessageSquare size={14} /> Thảo luận về Task ({taskComments.length})</h5>
+                {taskComments.length === 0 && <p style={{ fontSize: 12, color: '#94a3b8' }}>Chưa có bình luận trong phiên này.</p>}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                  {taskComments.map((comment) => <div key={comment.id} style={{ background: '#1e293b', padding: '10px 12px', borderRadius: 8, border: '1px solid #334155' }}><div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}><strong style={{ color: '#818cf8' }}>{comment.author}</strong><span style={{ color: '#64748b' }}>{comment.time}</span></div><p style={{ margin: 0, fontSize: 13, color: '#f8fafc' }}>{comment.content}</p></div>)}
+                </div>
+                <form onSubmit={handleSendComment} style={{ display: 'flex', gap: 8 }}><input type="text" placeholder="Viết bình luận..." value={newTaskComment} onChange={(event) => setNewTaskComment(event.target.value)} className="o-nhap-lieu" style={{ flex: 1, minWidth: 0, fontSize: 13, padding: '8px 12px' }} required /><button type="submit" className="nut-chinh" style={{ padding: '8px 14px', fontSize: 13 }}><Send size={12} /> Gửi</button></form>
+                <p style={{ color: '#64748b', fontSize: 11, marginBottom: 0 }}>Bình luận hiện chỉ lưu tạm trên trang; Backend chưa được kết nối API bình luận.</p>
+              </div>
+            </div>
+            <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 12, padding: 16, height: 'fit-content' }}>
+              <h3 style={{ color: '#38bdf8', fontSize: 14, margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Users size={17} /> Nhóm chịu trách nhiệm
+              </h3>
+              <p style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6, margin: '0 0 16px' }}>
+                Chưa phân công nhóm. Thông tin nhóm và trưởng nhóm sẽ hiển thị tại đây sau khi hoàn thiện chức năng Nhóm &amp; Phân quyền.
               </p>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', background: '#0f172a', padding: '12px', borderRadius: '8px', border: '1px solid #334155' }}>
-              <div>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>Người thực hiện</span>
-                <span style={{ fontSize: '13px', color: '#cbd5e1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <User size={14} style={{ color: '#38bdf8' }} /> {task.assignee}
-                </span>
+              <div style={{ borderTop: '1px solid #334155', paddingTop: 14 }}>
+                <h4 style={{ color: '#cbd5e1', fontSize: 13, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <ClipboardList size={15} /> Phân chia công việc
+                </h4>
+                <p style={{ color: '#64748b', fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                  Trưởng nhóm sẽ phân chia Task này thành các công việc nhỏ và giao cho thành viên trên Kanban nhóm.
+                </p>
               </div>
-              <div>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>Hạn hoàn thành</span>
-                <span style={{ fontSize: '13px', color: '#cbd5e1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Clock size={14} style={{ color: '#fbbf24' }} /> {task.deadline}
-                </span>
-              </div>
-            </div>
-
-            {/* Thảo luận */}
-            <div style={{ background: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
-              <h5 style={{ fontSize: '13px', color: '#34d399', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <MessageSquare size={14} /> Thảo luận về Task ({taskComments.length})
-              </h5>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-                {taskComments.map((c) => (
-                  <div key={c.id} style={{ background: '#1e293b', padding: '10px 12px', borderRadius: '8px', border: '1px solid #334155' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
-                      <strong style={{ color: '#818cf8' }}>{c.author}</strong>
-                      <span style={{ color: '#64748b' }}>{c.time}</span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: '13px', color: '#f8fafc' }}>{c.content}</p>
-                  </div>
-                ))}
-              </div>
-
-              <form onSubmit={handleSendComment} style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  placeholder="Viết bình luận..."
-                  value={newTaskComment}
-                  onChange={(e) => setNewTaskComment(e.target.value)}
-                  className="o-nhap-lieu"
-                  style={{ flex: 1, fontSize: '13px', padding: '8px 12px' }}
-                  required
-                />
-                <button type="submit" className="nut-chinh" style={{ padding: '8px 14px', fontSize: '13px' }}>
-                  <Send size={12} /> Gửi
-                </button>
-              </form>
             </div>
           </div>
-
-          {/* Cột bên phải: Đồng hồ Pomodoro Thông Minh */}
-          <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '12px', padding: '16px', textAlign: 'center', height: 'fit-content' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <span style={{ fontSize: '13px', color: '#38bdf8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Timer size={16} /> Pomodoro
-              </span>
-              <span style={{ fontSize: '11px', color: '#34d399', background: 'rgba(52, 211, 153, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                Đã xong: <strong>{completedPomodoros}</strong>
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginBottom: '14px' }}>
-              <button
-                onClick={() => switchPomoMode("work")}
-                style={{ background: pomoMode === "work" ? '#6366f1' : '#1e293b', color: '#fff', border: '1px solid #334155', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
-              >
-                Tập trung
-              </button>
-              <button
-                onClick={() => switchPomoMode("shortBreak")}
-                style={{ background: pomoMode === "shortBreak" ? '#10b981' : '#1e293b', color: '#fff', border: '1px solid #334155', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
-              >
-                Nghỉ ngắn
-              </button>
-              <button
-                onClick={() => switchPomoMode("longBreak")}
-                style={{ background: pomoMode === "longBreak" ? '#f59e0b' : '#1e293b', color: '#fff', border: '1px solid #334155', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
-              >
-                Nghỉ dài
-              </button>
-            </div>
-
-            <div style={{ fontSize: '36px', fontWeight: 800, color: '#f8fafc', fontFamily: 'monospace', marginBottom: '14px' }}>
-              {formatTime(timeLeft)}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-              <button
-                onClick={() => setIsPomoRunning(!isPomoRunning)}
-                style={{ background: isPomoRunning ? '#ef4444' : '#10b981', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-              >
-                {isPomoRunning ? <><Pause size={12} /> Tạm dừng</> : <><Play size={12} /> Bắt đầu</>}
-              </button>
-              <button
-                onClick={() => {
-                  setIsPomoRunning(false);
-                  if (pomoMode === "work") setTimeLeft(25 * 60);
-                  else if (pomoMode === "shortBreak") setTimeLeft(5 * 60);
-                  else setTimeLeft(15 * 60);
-                }}
-                style={{ background: '#1e293b', color: '#94a3b8', border: '1px solid #334155', padding: '8px 10px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}
-                title="Đặt lại"
-              >
-                <RotateCcw size={12} />
-              </button>
-            </div>
-          </div>
-
         </div>
-
-      </div>
+      )}
     </div>
   );
 }

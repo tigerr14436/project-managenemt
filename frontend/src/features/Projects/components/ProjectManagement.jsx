@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   FolderPlus,
   UserPlus,
@@ -57,9 +57,11 @@ async function sendAuthenticatedRequest(apiPath, options = {}) {
 
 export default function ProjectManagement() {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const currentUserName = "Shut Heast";
-  const currentUserEmail = "shutheast@devtask.vn";
+  const [currentUser, setCurrentUser] = useState(null);
+  const currentUserName = currentUser?.name || "";
+  const currentUserEmail = currentUser?.email || "";
 
   const [projectList, setProjectList] = useState([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
@@ -71,31 +73,29 @@ export default function ProjectManagement() {
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
 
   const [activeTab, setActiveTab] = useState("kanban");
+  useEffect(() => {
+  const returnProjectId = location.state?.returnProjectId;
 
-  // Danh sách Nhóm làm việc
-  const [groups, setGroups] = useState([
-    {
-      id: 101,
-      name: "Đội ngũ Backend API",
-      leader: "Shut Heast",
-      leaderEmail: "shutheast@devtask.vn",
-    },
-    {
-      id: 102,
-      name: "Đội ngũ Frontend React",
-      leader: "Nguyễn Văn A",
-      leaderEmail: "vana@devtask.vn",
-    },
-  ]);
+  if (!returnProjectId || projectList.length === 0) return;
 
-  // Phân quyền
-  const isProjectOwner =
-    selectedProject?.role === "owner" ||
-    selectedProject?.owner === currentUserName;
-  const isAnyGroupLeader = groups.some(
-    (g) => g.leaderEmail === currentUserEmail || g.leader === currentUserName,
+  const project = projectList.find(
+    (item) => String(item.id) === String(returnProjectId)
   );
-  const canManageKanban = isProjectOwner || isAnyGroupLeader;
+
+  if (project) {
+    setSelectedProject(project);
+    setActiveTab(location.state?.returnTab || "kanban");
+
+    navigate("/project", { replace: true, state: null });
+  }
+}, [location.state, projectList, navigate]);
+
+  // Nhóm và quyền lấy từ Backend; không sử dụng dữ liệu mẫu.
+  const [groups, setGroups] = useState([]);
+  const isProjectOwner = selectedProject?.role === "owner";
+  const isAnyGroupLeader = groups.some(g => g.leader_id === currentUser?.id);
+  // Kanban dự án chỉ Owner có quyền sửa Task theo API backend/main.py.
+  const canManageKanban = isProjectOwner;
 
   const [newProjectName, setNewProjectName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -106,6 +106,10 @@ export default function ProjectManagement() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [currentTaskColumn, setCurrentTaskColumn] = useState("todo");
   const [editingTaskId, setEditingTaskId] = useState(null);
+  const [taskGroupId, setTaskGroupId] = useState("");
+  const [taskGroupAssignments, setTaskGroupAssignments] = useState({});
+  const [loadingTaskGroups, setLoadingTaskGroups] = useState(false);
+  const [savingTask, setSavingTask] = useState(false);
   const [taskForm, setTaskForm] = useState({
     title: "",
     description: "",
@@ -121,7 +125,20 @@ export default function ProjectManagement() {
 
   useEffect(() => {
     fetchProjectList();
+    sendAuthenticatedRequest("/users/me")
+      .then(setCurrentUser)
+      .catch(() => setCurrentUser(null));
   }, []);
+
+  useEffect(() => {
+    setGroups([]);
+    if (!selectedProject?.id) return;
+    let active = true;
+    sendAuthenticatedRequest(`/projects/${selectedProject.id}/groups`)
+      .then(data => { if (active) setGroups(Array.isArray(data) ? data : []); })
+      .catch(error => { if (active) showNotification("loi", "Không tải được nhóm", error.message); });
+    return () => { active = false; };
+  }, [selectedProject?.id]);
 
   useEffect(() => {
     if (selectedProject) fetchProjectTasks(selectedProject.id);
@@ -136,53 +153,10 @@ export default function ProjectManagement() {
 
     setIsLoadingMembers(true);
     sendAuthenticatedRequest(`/projects/${projectId}/members`)
-      .then((data) => {
-        setProjectMembers(
-          Array.isArray(data) && data.length > 0
-            ? data
-            : [
-                {
-                  id: 1,
-                  name: "Shut Heast",
-                  email: "shutheast@devtask.vn",
-                  role: "owner",
-                },
-                {
-                  id: 2,
-                  name: "Nguyễn Văn A",
-                  email: "vana@devtask.vn",
-                  role: "member",
-                },
-                {
-                  id: 3,
-                  name: "Trần Thị B",
-                  email: "thib@devtask.vn",
-                  role: "member",
-                },
-              ],
-        );
-      })
-      .catch(() => {
-        setProjectMembers([
-          {
-            id: 1,
-            name: "Shut Heast",
-            email: "shutheast@devtask.vn",
-            role: "owner",
-          },
-          {
-            id: 2,
-            name: "Nguyễn Văn A",
-            email: "vana@devtask.vn",
-            role: "member",
-          },
-          {
-            id: 3,
-            name: "Trần Thị B",
-            email: "thib@devtask.vn",
-            role: "member",
-          },
-        ]);
+      .then(data => setProjectMembers(Array.isArray(data) ? data : []))
+      .catch(error => {
+        setProjectMembers([]);
+        showNotification("loi", "Không tải được thành viên", error.message);
       })
       .finally(() => setIsLoadingMembers(false));
   }, [selectedProject?.id]);
@@ -328,19 +302,68 @@ export default function ProjectManagement() {
     }
   };
 
+  // Đọc phân công hiện tại qua API Kanban nhóm đã có; không cần API mới.
+  const loadTaskGroupAssignments = async () => {
+    if (!selectedProject?.id || !isProjectOwner) return {};
+    setLoadingTaskGroups(true);
+    try {
+      const boards = await Promise.all(groups.map(async (group) => ({
+        groupId: group.id,
+        board: await sendAuthenticatedRequest(
+          `/projects/${selectedProject.id}/groups/${group.id}/kanban`
+        ),
+      })));
+      const assignments = {};
+      boards.forEach(({ groupId, board }) => {
+        (board?.tasks || []).forEach((task) => { assignments[task.id] = groupId; });
+      });
+      setTaskGroupAssignments(assignments);
+      return assignments;
+    } finally {
+      setLoadingTaskGroups(false);
+    }
+  };
+
+  const saveTaskGroupAssignment = async (taskId, previousGroupId, nextGroupId) => {
+    if (previousGroupId === nextGroupId) return;
+    const base = `/projects/${selectedProject.id}/groups`;
+    if (previousGroupId) {
+      // Backend từ chối gỡ Task nếu đã có Subtask, nhằm bảo vệ dữ liệu.
+      await sendAuthenticatedRequest(
+        `${base}/${previousGroupId}/kanban/tasks/${taskId}`,
+        { method: "DELETE" }
+      );
+    }
+    if (nextGroupId) {
+      await sendAuthenticatedRequest(`${base}/${nextGroupId}/kanban/tasks`, {
+        method: "POST",
+        body: JSON.stringify({ task_id: taskId }),
+      });
+    }
+    setTaskGroupAssignments((prev) => {
+      const updated = { ...prev };
+      if (nextGroupId) updated[taskId] = nextGroupId;
+      else delete updated[taskId];
+      return updated;
+    });
+  };
+
   const handleSaveTask = async (e) => {
     e.preventDefault();
     if (!canManageKanban) {
       showNotification(
         "loi",
         "Quyền truy cập",
-        "Bạn không phải Trưởng nhóm hoặc Chủ dự án để chỉnh sửa task!",
+        "Chỉ Chủ dự án được chỉnh sửa Task cấp dự án!",
       );
       return;
     }
     if (!taskForm.title.trim() || !selectedProject) return;
 
+    if (savingTask || loadingTaskGroups) return;
+    setSavingTask(true);
     try {
+      let savedTaskId = editingTaskId;
       if (editingTaskId) {
         const updatedTask = await sendAuthenticatedRequest(
           `/tasks/${editingTaskId}`,
@@ -383,6 +406,7 @@ export default function ProjectManagement() {
               : null,
           }),
         });
+        savedTaskId = newTask.id;
         setProjectTasks((prev) => [newTask, ...prev]);
         showNotification(
           "thanh-cong",
@@ -391,6 +415,18 @@ export default function ProjectManagement() {
         );
       }
 
+      try {
+        await saveTaskGroupAssignment(
+          savedTaskId,
+          editingTaskId ? (taskGroupAssignments[editingTaskId] || "") : "",
+          taskGroupId
+        );
+      } catch (assignmentError) {
+        showNotification("loi", "Không lưu được nhóm phụ trách", assignmentError.message);
+        await loadTaskGroupAssignments().catch(() => {});
+        // Task đã lưu, giữ form mở để người dùng xử lý việc phân nhóm.
+        return;
+      }
       setIsTaskModalOpen(false);
       setEditingTaskId(null);
       setTaskForm({
@@ -402,6 +438,8 @@ export default function ProjectManagement() {
       });
     } catch (error) {
       showNotification("loi", "Không lưu được task", error.message);
+    } finally {
+      setSavingTask(false);
     }
   };
 
@@ -410,11 +448,15 @@ export default function ProjectManagement() {
       showNotification(
         "can-bao",
         "Hạn chế quyền",
-        "Chỉ Trưởng nhóm hoặc Chủ dự án mới có thể chỉnh sửa Task.",
+        "Chỉ Chủ dự án mới có thể chỉnh sửa Task.",
       );
       return;
     }
     setEditingTaskId(task.id);
+    setTaskGroupId(taskGroupAssignments[task.id] || "");
+    loadTaskGroupAssignments()
+      .then((assignments) => setTaskGroupId(assignments[task.id] || ""))
+      .catch((error) => showNotification("loi", "Không tải được nhóm phụ trách", error.message));
     setCurrentTaskColumn(task.status);
     setTaskForm({
       title: task.title || "",
@@ -431,11 +473,15 @@ export default function ProjectManagement() {
       showNotification(
         "can-bao",
         "Hạn chế quyền",
-        "Chỉ Trưởng nhóm hoặc Chủ dự án mới có quyền tạo Task mới.",
+        "Chỉ Chủ dự án mới có quyền tạo Task mới.",
       );
       return;
     }
     setEditingTaskId(null);
+    setTaskGroupId("");
+    loadTaskGroupAssignments().catch((error) =>
+      showNotification("loi", "Không tải được nhóm phụ trách", error.message)
+    );
     setCurrentTaskColumn(columnKey);
     setTaskForm({
       title: "",
@@ -452,7 +498,7 @@ export default function ProjectManagement() {
       showNotification(
         "loi",
         "Hạn chế quyền",
-        "Chỉ Trưởng nhóm hoặc Chủ dự án mới có quyền xóa Task.",
+        "Chỉ Chủ dự án mới có quyền xóa Task.",
       );
       return;
     }
@@ -669,7 +715,7 @@ export default function ProjectManagement() {
                   }}
                 >
                   <Lock size={16} /> Bạn đang truy cập dưới quyền Thành viên.
-                  Chỉ Trưởng nhóm hoặc Chủ dự án mới có quyền Thêm / Sửa / Xóa
+                  Chỉ Chủ dự án mới có quyền Thêm / Sửa / Xóa
                   công việc.
                 </div>
               )}
@@ -771,11 +817,13 @@ export default function ProjectManagement() {
           {/* 2. TAB QUẢN LÝ NHÓM (GỌI COMPONENT VỪA TÁCH)[cite: 11] */}
           {activeTab === "groups" && (
             <GroupManagement
+              projectId={selectedProject.id}
               groups={groups}
               setGroups={setGroups}
               projectMembers={projectMembers}
+              projectTasks={projectTasks}
               isProjectOwner={isProjectOwner}
-              currentUserName={currentUserName}
+              currentUserId={currentUser?.id}
               showNotification={showNotification}
             />
           )}
@@ -1063,6 +1111,28 @@ export default function ProjectManagement() {
                 </div>
               </div>
               <div className="nhom-form-group">
+                <label className="nhan-form">Nhóm chịu trách nhiệm</label>
+                <select
+                  className="select-form"
+                  value={taskGroupId}
+                  onChange={(e) => setTaskGroupId(e.target.value)}
+                  disabled={loadingTaskGroups || savingTask}
+                  style={{ width: "100%" }}
+                >
+                  <option value="">-- Chưa giao cho nhóm --</option>
+                  {groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}{group.leader ? ` — Leader: ${group.leader}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <small style={{ color: "#94a3b8", display: "block", marginTop: 6 }}>
+                  {loadingTaskGroups
+                    ? "Đang kiểm tra phân công hiện tại..."
+                    : "Chỉ Owner được phân công. Task sẽ xuất hiện trong Kanban của nhóm đã chọn."}
+                </small>
+              </div>
+              <div className="nhom-form-group">
                 <label className="nhan-form">Hạn hoàn thành (Deadline)</label>
                 <input
                   type="date"
@@ -1081,8 +1151,8 @@ export default function ProjectManagement() {
                 >
                   Hủy
                 </button>
-                <button type="submit" className="nut-chinh">
-                  {editingTaskId ? "Lưu Thay Đổi" : "Tạo Task ngay"}
+                <button type="submit" className="nut-chinh" disabled={savingTask || loadingTaskGroups}>
+                  {savingTask ? "Đang lưu..." : editingTaskId ? "Lưu Thay Đổi" : "Tạo Task ngay"}
                 </button>
               </div>
             </form>

@@ -17,6 +17,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timezone
+from project_groups import router as project_groups_router
+from group_kanban import router as group_kanban_router
+from subtask_focus import router as subtask_focus_router
 
 from database import engine, Base, get_db
 from models import (
@@ -46,7 +49,9 @@ from models import (
 
 app = FastAPI(title="Quản lý công việc & dự án CNTT API")
 app.include_router(email_verification_router)
-
+app.include_router(project_groups_router)
+app.include_router(group_kanban_router)
+app.include_router(subtask_focus_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
