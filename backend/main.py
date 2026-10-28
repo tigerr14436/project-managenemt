@@ -17,6 +17,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timezone
+from project_groups import router as project_groups_router
+from group_kanban import router as group_kanban_router
+from subtask_focus import router as subtask_focus_router
 
 from database import engine, Base, get_db
 from models import (
@@ -26,6 +29,7 @@ from models import (
 )
 from auth_utils import hash_password, verify_password, create_access_token
 from auth_deps import get_current_user
+from email_verification import router as email_verification_router, issue_code
 import asyncio
 import json
 import re
@@ -44,7 +48,10 @@ from models import (
 
 
 app = FastAPI(title="Quản lý công việc & dự án CNTT API")
-
+app.include_router(email_verification_router)
+app.include_router(project_groups_router)
+app.include_router(group_kanban_router)
+app.include_router(subtask_focus_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -128,28 +135,34 @@ async def _require_project_owner(
 
 @app.post("/api/auth/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == payload.email))
+    email = str(payload.email).strip().lower()
+    result = await db.execute(select(User).where(User.email == email))
     if result.scalar_one_or_none() is not None:
         raise HTTPException(status_code=400, detail="Email này đã được đăng ký")
 
     new_user = User(
         name=payload.name,
-        email=payload.email,
+        email=email,
         password_hash=hash_password(payload.password),
+        is_verified=False,
     )
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+    await issue_code(db, new_user, enforce_cooldown=False)
     return new_user
 
 
 @app.post("/api/auth/login", response_model=TokenOut)
 async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == payload.email))
+    result = await db.execute(select(User).where(User.email == str(payload.email).strip().lower()))
     user = result.scalar_one_or_none()
 
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
+
+    if not user.is_verified:
+        raise HTTPException(status_code=403, detail="Email chưa được xác minh. Vui lòng nhập mã OTP đã gửi hoặc yêu cầu gửi lại.")
 
     token = create_access_token({"sub": str(user.id)})
     return TokenOut(access_token=token)
