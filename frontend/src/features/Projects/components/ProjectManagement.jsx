@@ -24,6 +24,7 @@ import {
   FileCode,
   Users,
   Lock,
+  DollarSign,
 } from "lucide-react";
 import "../ProjectManagement.css";
 
@@ -33,6 +34,7 @@ import CodeManagement from "./CodeManagement";
 import CodeReview from "./CodeReview";
 import ProjectChat from "./ProjectChat";
 import GroupManagement from "./GroupManagement";
+import ProjectCostCalculator from "./ProjectCostCalculator";
 
 async function sendAuthenticatedRequest(apiPath, options = {}) {
   const token = localStorage.getItem("access_token");
@@ -648,6 +650,24 @@ export default function ProjectManagement() {
             >
               <FileCode size={15} /> Code Review
             </button>
+            <button
+              onClick={() => setActiveTab("cost")}
+              style={{
+                background: activeTab === "cost" ? "#4f46e5" : "#1e293b",
+                color: "#fff",
+                border: "1px solid #334155",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <DollarSign size={15} /> Tính chi phí dự án
+            </button>
           </div>
 
           {/* 1. BẢNG KANBAN */}
@@ -768,7 +788,7 @@ export default function ProjectManagement() {
             </>
           )}
 
-          {/* 2. TAB QUẢN LÝ NHÓM (GỌI COMPONENT VỪA TÁCH)[cite: 11] */}
+          {/* 2. TAB QUẢN LÝ NHÓM */}
           {activeTab === "groups" && (
             <GroupManagement
               groups={groups}
@@ -797,7 +817,13 @@ export default function ProjectManagement() {
             />
           )}
 
-          
+          {/* 5. TÍNH CHI PHÍ DỰ ÁN */}
+          {activeTab === "cost" && (
+            <ProjectCostCalculator
+              projectTasks={projectTasks}
+              showNotification={showNotification}
+            />
+          )}
         </div>
       ) : (
         <>
