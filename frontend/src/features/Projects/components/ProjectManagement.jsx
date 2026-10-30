@@ -99,7 +99,14 @@ export default function ProjectManagement() {
   // Kanban dự án chỉ Owner có quyền sửa Task theo API backend/main.py.
   const canManageKanban = isProjectOwner;
 
-  const [newProjectName, setNewProjectName] = useState("");
+  const [editingProjectId, setEditingProjectId] = useState(null);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [projectForm, setProjectForm] = useState({
+    name: "",
+    description: "",
+    start_date: "",
+    end_date: "",
+  });
   const [joinCode, setJoinCode] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -205,24 +212,69 @@ export default function ProjectManagement() {
     }
   };
 
+  const openEditProject = (project) => {
+    if (project.role !== "owner") return;
+    setEditingProjectId(project.id);
+    setProjectForm({
+      name: project.name || "",
+      description: project.description || "",
+      start_date: project.start_date || "",
+      end_date: project.end_date || "",
+    });
+    setIsProjectModalOpen(true);
+  };
+
+  const openCreateProject = () => {
+    setEditingProjectId(null);
+    setProjectForm({ name: "", description: "", start_date: "", end_date: "" });
+    setIsProjectModalOpen(true);
+  };
+
+  const markProjectComplete = async (project) => {
+    if (project.role !== "owner" || project.status === "completed") return;
+    if (!window.confirm(`Đánh dấu dự án "${project.name}" đã hoàn thành? Dữ liệu và nhóm vẫn được giữ lại.`)) return;
+    try {
+      const updated = await sendAuthenticatedRequest(`/projects/${project.id}`, {
+        method: "PUT", body: JSON.stringify({ status: "completed" }),
+      });
+      setProjectList((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+      showNotification("thanh-cong", "Hoàn thành dự án", `Đã kết thúc "${project.name}". Các nhóm chưa bị xóa.`);
+    } catch (error) {
+      showNotification("loi", "Không hoàn thành được dự án", error.message);
+    }
+  };
+
   const handleCreateProject = async (e) => {
     e.preventDefault();
-    if (!newProjectName.trim()) return;
+    const name = projectForm.name.trim();
+    if (!name || !projectForm.start_date || !projectForm.end_date) {
+      showNotification("loi", "Thiếu thông tin", "Vui lòng nhập tên và thời gian dự án.");
+      return;
+    }
+    if (projectForm.end_date < projectForm.start_date) {
+      showNotification("loi", "Ngày không hợp lệ", "Ngày kết thúc không được trước ngày bắt đầu.");
+      return;
+    }
+    if (isCreatingProject) return;
     setIsCreatingProject(true);
     try {
-      const newProject = await sendAuthenticatedRequest("/projects", {
-        method: "POST",
-        body: JSON.stringify({ name: newProjectName.trim() }),
+      const newProject = await sendAuthenticatedRequest(editingProjectId ? `/projects/${editingProjectId}` : "/projects", {
+        method: editingProjectId ? "PUT" : "POST",
+        body: JSON.stringify({
+          name,
+          description: projectForm.description.trim() || null,
+          start_date: projectForm.start_date,
+          end_date: projectForm.end_date,
+        }),
       });
-      setProjectList((prev) => [newProject, ...prev]);
-      showNotification(
-        "thanh-cong",
-        "Thành công",
-        `Đã khởi tạo dự án "${newProject.name}"`,
-      );
-      setNewProjectName("");
+      setProjectList((prev) => editingProjectId ? prev.map((p) => p.id === newProject.id ? newProject : p) : [newProject, ...prev]);
+      setEditingProjectId(null);
+      setProjectForm({ name: "", description: "", start_date: "", end_date: "" });
+      setIsProjectModalOpen(false);
+      showNotification("thanh-cong", "Thành công", `Đã lưu dự án "${newProject.name}"`);
     } catch (error) {
-      showNotification("loi", "Không tạo được dự án", error.message);
+      const message = typeof error.message === "string" ? error.message : "Không thể tạo dự án";
+      showNotification("loi", "Không tạo được dự án", message);
     } finally {
       setIsCreatingProject(false);
     }
@@ -893,31 +945,14 @@ export default function ProjectManagement() {
                 Thiết lập không gian quản lý tiến độ và công việc riêng cho đội
                 ngũ của bạn
               </p>
-              <form onSubmit={handleCreateProject} className="form-hanh-dong">
-                <div className="nhom-nhap-lieu">
-                  <Code2 size={18} className="bieu-tuong-input" />
-                  <input
-                    type="text"
-                    placeholder="Nhập tên dự án..."
-                    value={newProjectName}
-                    onChange={(e) => setNewProjectName(e.target.value)}
-                    className="o-nhap-lieu"
-                    required
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={isCreatingProject}
-                  className="nut-chinh"
-                >
-                  {isCreatingProject ? (
-                    <Loader2 size={16} className="icon-quay" />
-                  ) : (
-                    <FolderPlus size={16} />
-                  )}
-                  <span>{isCreatingProject ? "Đang tạo..." : "Tạo Dự Án"}</span>
-                </button>
-              </form>
+              <button
+                type="button"
+                className="nut-chinh"
+                onClick={openCreateProject}
+              >
+                <FolderPlus size={16} />
+                <span>Tạo Dự Án</span>
+              </button>
             </div>
 
             <div className="the-hanh-dong">
@@ -1020,6 +1055,8 @@ export default function ProjectManagement() {
                       copyJoinCode={copyJoinCode}
                       setSelectedProject={setSelectedProject}
                       handleDeleteProject={handleDeleteProject}
+                      onEditProject={openEditProject}
+                      onCompleteProject={markProjectComplete}
                     />
                   ))}
                 </div>
@@ -1034,6 +1071,8 @@ export default function ProjectManagement() {
                       copyJoinCode={copyJoinCode}
                       setSelectedProject={setSelectedProject}
                       handleDeleteProject={handleDeleteProject}
+                      onEditProject={openEditProject}
+                      onCompleteProject={markProjectComplete}
                     />
                   ))}
                 </div>
@@ -1050,6 +1089,66 @@ export default function ProjectManagement() {
             )}
           </div>
         </>
+      )}
+
+      {/* Modal tạo dự án */}
+      {isProjectModalOpen && (
+        <div className="lop-phu-modal" onClick={() => !isCreatingProject && setIsProjectModalOpen(false)}>
+          <div className="noi-dung-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="header-modal">
+              <h4 className="tieu-de-modal">{editingProjectId ? "Chỉnh Sửa Dự Án" : "Tạo Dự Án Mới"}</h4>
+              <button type="button" className="nut-dong-modal"
+                disabled={isCreatingProject} onClick={() => setIsProjectModalOpen(false)}
+                aria-label="Đóng form tạo dự án">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateProject}>
+              <div className="nhom-form-group">
+                <label className="nhan-form" htmlFor="project-name">Tên dự án *</label>
+                <input id="project-name" className="input-form" type="text"
+                  maxLength={255} required autoFocus
+                  placeholder="VD: Website Quản Lý Công Việc CNTT"
+                  value={projectForm.name}
+                  onChange={(e) => setProjectForm((p) => ({ ...p, name: e.target.value }))} />
+              </div>
+              <div className="nhom-form-group">
+                <label className="nhan-form" htmlFor="project-description">Mô tả ngắn</label>
+                <textarea id="project-description" className="textarea-form"
+                  rows={3} maxLength={1000}
+                  placeholder="Mục tiêu và nội dung chính của dự án..."
+                  value={projectForm.description}
+                  onChange={(e) => setProjectForm((p) => ({ ...p, description: e.target.value }))} />
+              </div>
+              <div className="luoi-hai-cot-modal">
+                <div className="nhom-form-group">
+                  <label className="nhan-form" htmlFor="project-start">Ngày bắt đầu *</label>
+                  <input id="project-start" type="date" className="input-form"
+                    required value={projectForm.start_date}
+                    max={projectForm.end_date || undefined}
+                    onChange={(e) => setProjectForm((p) => ({ ...p, start_date: e.target.value }))} />
+                </div>
+                <div className="nhom-form-group">
+                  <label className="nhan-form" htmlFor="project-end">Ngày kết thúc *</label>
+                  <input id="project-end" type="date" className="input-form"
+                    required min={projectForm.start_date || undefined}
+                    value={projectForm.end_date}
+                    onChange={(e) => setProjectForm((p) => ({ ...p, end_date: e.target.value }))} />
+                </div>
+              </div>
+              <div className="chan-modal">
+                <button type="button" className="nut-hanh-dong-the xem"
+                  disabled={isCreatingProject} onClick={() => setIsProjectModalOpen(false)}>
+                  Hủy
+                </button>
+                <button type="submit" className="nut-chinh" disabled={isCreatingProject}>
+                  {isCreatingProject ? <Loader2 size={16} className="icon-quay" /> : <FolderPlus size={16} />}
+                  <span>{isCreatingProject ? "Đang lưu..." : editingProjectId ? "Lưu Thay Đổi" : "Tạo Dự Án"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Modal Task */}

@@ -1,13 +1,13 @@
 """SQLAlchemy models và Pydantic schemas cho DevTask (có xác minh email OTP)."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 
-from sqlalchemy import Boolean, Integer, String, Text, DateTime, ForeignKey, UniqueConstraint, func
+from sqlalchemy import Boolean, Integer, String, Text, Date, DateTime, ForeignKey, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, model_validator
 
 from database import Base
 
@@ -19,6 +19,7 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    name_tag: Mapped[Optional[str]] = mapped_column(String(5), nullable=True, unique=True, index=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -39,6 +40,9 @@ class Project(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     join_code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(50), default="active")
@@ -103,6 +107,7 @@ class UserOut(BaseModel):
     id: uuid.UUID
     name: str
     email: EmailStr
+    name_tag: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -115,7 +120,30 @@ class TokenOut(BaseModel):
 
 
 class ProjectCreate(BaseModel):
-    name: str = Field(..., min_length=1)
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str = Field(..., min_length=1, max_length=1000)
+    start_date: date
+    end_date: date
+
+    @model_validator(mode="after")
+    def validate_project(self):
+        self.name = self.name.strip()
+        self.description = self.description.strip()
+        if not self.name:
+            raise ValueError("Tên dự án không được để trống")
+        if not self.description:
+            raise ValueError("Mô tả dự án không được để trống")
+        if self.end_date < self.start_date:
+            raise ValueError("Ngày kết thúc không được trước ngày bắt đầu")
+        return self
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    status: Optional[str] = None
 
 
 class ProjectJoinIn(BaseModel):
@@ -130,6 +158,9 @@ class TaskSummary(BaseModel):
 class ProjectOut(BaseModel):
     id: uuid.UUID
     name: str
+    description: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
     join_code: str
     status: str
     role: str

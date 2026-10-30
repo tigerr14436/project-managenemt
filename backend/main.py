@@ -1,14 +1,11 @@
 """
 File chính chạy FastAPI server.
 Đặt file này trong thư mục /backend.
-
 Chạy server bằng lệnh:
     uvicorn main:app --reload --port 8000
-
 Lưu ý: create_all() tạo bảng mới, không tự sửa bảng đã tồn tại.
 Không cần xóa dữ liệu cũ để bổ sung bảng project_repositories.
 """
-
 import uuid
 import random
 import string
@@ -20,12 +17,12 @@ from datetime import datetime, timezone
 from project_groups import router as project_groups_router
 from group_kanban import router as group_kanban_router
 from subtask_focus import router as subtask_focus_router
-
+from name_tags import router as name_tags_router, generate_name_tag
 from database import engine, Base, get_db
 from models import (
     Task, TaskCreate, TaskUpdate, TaskOut, ALLOWED_STATUS, ALLOWED_PRIORITY,
     User, UserRegister, UserLogin, UserUpdate, UserOut, TokenOut,
-    Project, ProjectMember, ProjectCreate, ProjectJoinIn, ProjectOut, TaskSummary,
+    Project, ProjectMember, ProjectCreate, ProjectUpdate, ProjectJoinIn, ProjectOut, TaskSummary,
 )
 from auth_utils import hash_password, verify_password, create_access_token
 from auth_deps import get_current_user
@@ -33,25 +30,21 @@ from email_verification import router as email_verification_router, issue_code
 import asyncio
 import json
 import re
-
 from urllib.parse import urlparse, quote
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
-
 from sqlalchemy.exc import IntegrityError
-
 from models import (
     ProjectRepository,
     ProjectRepositoryCreate,
     ProjectRepositoryOut,
 )
-
-
 app = FastAPI(title="Quản lý công việc & dự án CNTT API")
 app.include_router(email_verification_router)
 app.include_router(project_groups_router)
 app.include_router(group_kanban_router)
 app.include_router(subtask_focus_router)
+app.include_router(name_tags_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -59,34 +52,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
 @app.on_event("startup")
 async def on_startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-
 def generate_join_code(name: str) -> str:
     letters = "".join(ch for ch in name.upper() if ch.isalpha())[:3] or "PRJ"
     digits = "".join(random.choices(string.digits, k=4))
     return f"{letters}-{digits}"
-
-
 async def _project_task_summary(db: AsyncSession, project_id: uuid.UUID) -> TaskSummary:
     result = await db.execute(select(Task.status).where(Task.project_id == project_id))
     statuses = result.scalars().all()
     completed = sum(1 for s in statuses if s == "done")
     return TaskSummary(completed=completed, total=len(statuses))
-
-
 async def _member_count(db: AsyncSession, project_id: uuid.UUID) -> int:
     result = await db.execute(
         select(func.count()).select_from(ProjectMember).where(ProjectMember.project_id == project_id)
     )
     return result.scalar_one()
-
-
 async def _get_membership(db: AsyncSession, project_id: uuid.UUID, user_id: uuid.UUID) -> ProjectMember | None:
     result = await db.execute(
         select(ProjectMember).where(
@@ -94,7 +77,6 @@ async def _get_membership(db: AsyncSession, project_id: uuid.UUID, user_id: uuid
         )
     )
     return result.scalar_one_or_none()
-
 async def _require_project_member(
     db: AsyncSession,
     project_id: uuid.UUID,
@@ -103,16 +85,12 @@ async def _require_project_member(
     membership = await _get_membership(
         db, project_id, user_id
     )
-
     if membership is None:
         raise HTTPException(
             status_code=403,
             detail="Bạn không thuộc dự án này"
         )
-
     return membership
-
-
 async def _require_project_owner(
     db: AsyncSession,
     project_id: uuid.UUID,
@@ -121,60 +99,61 @@ async def _require_project_owner(
     membership = await _require_project_member(
         db, project_id, user_id
     )
-
     if membership.role != "owner":
         raise HTTPException(
             status_code=403,
             detail="Chỉ Owner mới được thực hiện thao tác này"
         )
-
     return membership
-
-
 # ================= AUTH =================
-
 @app.post("/api/auth/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
     email = str(payload.email).strip().lower()
     result = await db.execute(select(User).where(User.email == email))
     if result.scalar_one_or_none() is not None:
         raise HTTPException(status_code=400, detail="Email này đã được đăng ký")
-
-    new_user = User(
-        name=payload.name,
-        email=email,
-        password_hash=hash_password(payload.password),
-        is_verified=False,
-    )
-    db.add(new_user)
+    # Cấp Name Tag duy nhất; savepoint cho phép thử lại khi trùng mã
+    # mà không làm hỏng transaction của phiên đăng ký.
+    new_user = None
+    for _ in range(40):
+        candidate = User(
+            name=payload.name,
+            email=email,
+            password_hash=hash_password(payload.password),
+            is_verified=False,
+            name_tag=generate_name_tag(),
+        )
+        try:
+            async with db.begin_nested():
+                db.add(candidate)
+                await db.flush()
+            new_user = candidate
+            break
+        except IntegrityError as exc:
+            # Chỉ thử lại khi trùng Name Tag, không nuốt lỗi trùng email.
+            constraint = getattr(getattr(exc.orig, "diag", None), "constraint_name", "") or ""
+            if constraint not in ("ix_users_name_tag", "uq_users_name_tag"):
+                raise HTTPException(status_code=409, detail="Email đã được đăng ký hoặc dữ liệu bị trùng")
+    if new_user is None:
+        raise HTTPException(status_code=503, detail="Không thể cấp Name Tag, vui lòng thử lại")
     await db.commit()
     await db.refresh(new_user)
     await issue_code(db, new_user, enforce_cooldown=False)
     return new_user
-
-
 @app.post("/api/auth/login", response_model=TokenOut)
 async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == str(payload.email).strip().lower()))
     user = result.scalar_one_or_none()
-
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
-
     if not user.is_verified:
         raise HTTPException(status_code=403, detail="Email chưa được xác minh. Vui lòng nhập mã OTP đã gửi hoặc yêu cầu gửi lại.")
-
     token = create_access_token({"sub": str(user.id)})
     return TokenOut(access_token=token)
-
-
 # ================= USERS (🔒) =================
-
 @app.get("/api/users/me", response_model=UserOut)
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
-
-
 @app.put("/api/users/me", response_model=UserOut)
 async def update_me(
     payload: UserUpdate,
@@ -187,10 +166,7 @@ async def update_me(
     await db.commit()
     await db.refresh(current_user)
     return current_user
-
-
 # ================= PROJECTS (🔒 tất cả đều cần đăng nhập) =================
-
 @app.post("/api/projects", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
 async def create_project(
     payload: ProjectCreate,
@@ -203,23 +179,68 @@ async def create_project(
         existing = await db.execute(select(Project).where(Project.join_code == code))
         if existing.scalar_one_or_none() is None:
             break
-
-    project = Project(name=payload.name, owner_id=current_user.id, join_code=code)
+    project = Project(
+        name=payload.name.strip(),
+        description=payload.description.strip() if payload.description else None,
+        start_date=payload.start_date,
+        end_date=payload.end_date,
+        owner_id=current_user.id,
+        join_code=code,
+    )
     db.add(project)
     await db.flush()  # để lấy project.id trước khi commit
-
     member = ProjectMember(project_id=project.id, user_id=current_user.id, role="owner")
     db.add(member)
     await db.commit()
     await db.refresh(project)
-
     return ProjectOut(
-        id=project.id, name=project.name, join_code=project.join_code,
+        id=project.id, name=project.name,
+            description=project.description,
+            start_date=project.start_date,
+            end_date=project.end_date,
+            join_code=project.join_code,
         status=project.status, role="owner", member_count=1,
         tasks=TaskSummary(completed=0, total=0),
     )
-
-
+@app.put("/api/projects/{project_id}", response_model=ProjectOut)
+async def update_project(
+    project_id: uuid.UUID,
+    payload: ProjectUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_project_owner(db, project_id, current_user.id)
+    project = await db.get(Project, project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy dự án")
+    changes = payload.model_dump(exclude_unset=True)
+    if "name" in changes:
+        if not changes["name"] or not changes["name"].strip():
+            raise HTTPException(status_code=422, detail="Tên dự án không được để trống")
+        changes["name"] = changes["name"].strip()
+    if "description" in changes:
+        changes["description"] = (changes["description"] or "").strip() or None
+    if "status" in changes and changes["status"] not in ("active", "completed"):
+        raise HTTPException(status_code=422, detail="Trạng thái dự án không hợp lệ")
+    start = changes.get("start_date", project.start_date)
+    end = changes.get("end_date", project.end_date)
+    if start and end and end < start:
+        raise HTTPException(status_code=422, detail="Ngày kết thúc không được trước ngày bắt đầu")
+    if changes.get("status") == "completed":
+        task_summary = await _project_task_summary(db, project_id)
+        if task_summary.total > task_summary.completed:
+            raise HTTPException(status_code=409, detail="Cần hoàn thành toàn bộ Task trước khi kết thúc dự án")
+    for field, value in changes.items():
+        setattr(project, field, value)
+    await db.commit()
+    await db.refresh(project)
+    return ProjectOut(
+        id=project.id, name=project.name, description=project.description,
+        start_date=project.start_date, end_date=project.end_date,
+        join_code=project.join_code, status=project.status, role="owner",
+        member_count=await _member_count(db, project_id),
+        tasks=await _project_task_summary(db, project_id),
+    )
 @app.get("/api/projects", response_model=list[ProjectOut])
 async def list_projects(
     current_user: User = Depends(get_current_user),
@@ -232,18 +253,19 @@ async def list_projects(
         .order_by(Project.created_at.desc())
     )
     rows = result.all()
-
     output = []
     for project, role in rows:
         output.append(ProjectOut(
-            id=project.id, name=project.name, join_code=project.join_code,
+            id=project.id, name=project.name,
+            description=project.description,
+            start_date=project.start_date,
+            end_date=project.end_date,
+            join_code=project.join_code,
             status=project.status, role=role,
             member_count=await _member_count(db, project.id),
             tasks=await _project_task_summary(db, project.id),
         ))
     return output
-
-
 @app.post("/api/projects/join", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
 async def join_project(
     payload: ProjectJoinIn,
@@ -255,23 +277,22 @@ async def join_project(
     project = result.scalar_one_or_none()
     if project is None:
         raise HTTPException(status_code=404, detail="Mã tham gia không chính xác")
-
     existing = await _get_membership(db, project.id, current_user.id)
     if existing is not None:
         raise HTTPException(status_code=400, detail="Bạn đã là thành viên của dự án này")
-
     member = ProjectMember(project_id=project.id, user_id=current_user.id, role="member")
     db.add(member)
     await db.commit()
-
     return ProjectOut(
-        id=project.id, name=project.name, join_code=project.join_code,
+        id=project.id, name=project.name,
+            description=project.description,
+            start_date=project.start_date,
+            end_date=project.end_date,
+            join_code=project.join_code,
         status=project.status, role="member",
         member_count=await _member_count(db, project.id),
         tasks=await _project_task_summary(db, project.id),
     )
-
-
 @app.get("/api/projects/{project_id}/members")
 async def get_project_members(
     project_id: uuid.UUID,
@@ -280,20 +301,16 @@ async def get_project_members(
 ):
     """Danh sách Owner và Member của dự án để phân công Task."""
     await _require_project_member(db, project_id, current_user.id)
-
     result = await db.execute(
         select(User, ProjectMember.role)
         .join(ProjectMember, ProjectMember.user_id == User.id)
         .where(ProjectMember.project_id == project_id)
         .order_by(User.name.asc(), User.id.asc())
     )
-
     return [
         {"id": str(user.id), "name": user.name, "role": role}
         for user, role in result.all()
     ]
-
-
 @app.delete("/api/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_or_leave_project(
     project_id: uuid.UUID,
@@ -303,7 +320,6 @@ async def delete_or_leave_project(
     member = await _get_membership(db, project_id, current_user.id)
     if member is None:
         raise HTTPException(status_code=404, detail="Không tìm thấy dự án")
-
     if member.role == "owner":
         # Xóa repository trước khi xóa project (tránh lỗi khóa ngoại)
         await db.execute(ProjectRepository.__table__.delete().where(ProjectRepository.project_id == project_id))
@@ -316,13 +332,9 @@ async def delete_or_leave_project(
     else:
         # Thành viên thường -> chỉ rời khỏi dự án
         await db.delete(member)
-
     await db.commit()
     return None
-
-
 # ================= TASKS (🔒, luôn kiểm tra user có thuộc project không) =================
-
 @app.post("/api/tasks", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
 async def create_task(
     task: TaskCreate,
@@ -334,20 +346,15 @@ async def create_task(
     task.project_id,
     current_user.id
 )
-
-
     if task.status not in ALLOWED_STATUS:
         raise HTTPException(status_code=422, detail=f"status phải là một trong: {', '.join(ALLOWED_STATUS)}")
     if task.priority not in ALLOWED_PRIORITY:
         raise HTTPException(status_code=422, detail=f"priority phải là một trong: {', '.join(ALLOWED_PRIORITY)}")
-
     new_task = Task(**task.model_dump())
     db.add(new_task)
     await db.commit()
     await db.refresh(new_task)
     return new_task
-
-
 @app.get("/api/tasks", response_model=list[TaskOut])
 async def get_tasks(
     project_id: uuid.UUID,
@@ -356,13 +363,10 @@ async def get_tasks(
 ):
     if await _get_membership(db, project_id, current_user.id) is None:
         raise HTTPException(status_code=403, detail="Bạn không thuộc dự án này")
-
     result = await db.execute(
         select(Task).where(Task.project_id == project_id).order_by(Task.created_at.desc())
     )
     return result.scalars().all()
-
-
 async def _get_task_or_403(db: AsyncSession, task_id: uuid.UUID, current_user: User) -> Task:
     task = await db.get(Task, task_id)
     if task is None:
@@ -370,8 +374,6 @@ async def _get_task_or_403(db: AsyncSession, task_id: uuid.UUID, current_user: U
     if await _get_membership(db, task.project_id, current_user.id) is None:
         raise HTTPException(status_code=403, detail="Bạn không thuộc dự án này")
     return task
-
-
 @app.get("/api/tasks/{task_id}", response_model=TaskOut)
 async def get_task(
     task_id: uuid.UUID,
@@ -379,8 +381,6 @@ async def get_task(
     db: AsyncSession = Depends(get_db),
 ):
     return await _get_task_or_403(db, task_id, current_user)
-
-
 @app.put("/api/tasks/{task_id}", response_model=TaskOut)
 async def update_task(
     task_id: uuid.UUID,
@@ -394,21 +394,16 @@ async def update_task(
     existing.project_id,
     current_user.id
 )
-
     update_data = task.model_dump(exclude_unset=True)
     if "status" in update_data and update_data["status"] not in ALLOWED_STATUS:
         raise HTTPException(status_code=422, detail=f"status phải là một trong: {', '.join(ALLOWED_STATUS)}")
     if "priority" in update_data and update_data["priority"] not in ALLOWED_PRIORITY:
         raise HTTPException(status_code=422, detail=f"priority phải là một trong: {', '.join(ALLOWED_PRIORITY)}")
-
     for field, value in update_data.items():
         setattr(existing, field, value)
-
     await db.commit()
     await db.refresh(existing)
     return existing
-
-
 @app.delete("/api/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
     task_id: uuid.UUID,
@@ -420,12 +415,9 @@ async def delete_task(
     await db.delete(existing)
     await db.commit()
     return None
-
-
 @app.get("/")
 async def root():
     return {"message": "API đang chạy. Vào /docs để xem tài liệu API."}
-
 @app.get("/api/dashboard")
 async def get_dashboard(
     current_user: User = Depends(get_current_user),
@@ -443,7 +435,6 @@ async def get_dashboard(
     )
     projects = result.scalars().all()
     project_ids = [p.id for p in projects]
-
     if not project_ids:
         return {
             "statistics": {
@@ -455,7 +446,6 @@ async def get_dashboard(
             "projectProgressChart": [],
             "recentActivities": []
         }
-
     # Lấy Task thuộc các dự án có quyền truy cập
     task_result = await db.execute(
         select(Task)
@@ -463,22 +453,18 @@ async def get_dashboard(
         .order_by(Task.updated_at.desc())
     )
     tasks = task_result.scalars().all()
-
     completed_tasks = sum(
         1 for task in tasks if task.status == "done"
     )
-
     # Đếm thành viên duy nhất
     member_result = await db.execute(
         select(func.count(func.distinct(ProjectMember.user_id)))
         .where(ProjectMember.project_id.in_(project_ids))
     )
     total_members = member_result.scalar_one()
-
     # Tính tiến độ cho từng dự án
     project_progress = []
     project_names = {p.id: p.name for p in projects}
-
     for project in projects:
         project_tasks = [
             t for t in tasks if t.project_id == project.id
@@ -488,7 +474,6 @@ async def get_dashboard(
             1 for t in project_tasks if t.status == "done"
         )
         progress = round(done / total * 100) if total else 0
-
         project_progress.append({
             "id": str(project.id),
             "name": project.name,
@@ -496,10 +481,8 @@ async def get_dashboard(
             "totalTasks": total,
             "completedTasks": done
         })
-
     # Hoạt động gần đây từ Task và Project
     activities = []
-
     for task in tasks:
         activities.append({
             "id": f"task-{task.id}",
@@ -513,7 +496,6 @@ async def get_dashboard(
             ),
             "timestamp": (task.updated_at or task.created_at).isoformat()
         })
-
     for project in projects:
         activities.append({
             "id": f"project-{project.id}",
@@ -521,12 +503,10 @@ async def get_dashboard(
             "project": project.name,
             "timestamp": project.created_at.isoformat()
         })
-
     activities.sort(
         key=lambda item: item["timestamp"],
         reverse=True
     )
-
     return {
         "statistics": {
             "totalProjects": len(projects),
@@ -537,9 +517,7 @@ async def get_dashboard(
         "projectProgressChart": project_progress,
         "recentActivities": activities[:5]
     }
-
 # ================= GITHUB REPOSITORIES =================
-
 def parse_github_repository_url(raw_url: str) -> tuple[str, str]:
     """Chỉ cho phép URL repository GitHub chuẩn, không cho URL máy chủ tùy ý."""
     try:
@@ -547,7 +525,6 @@ def parse_github_repository_url(raw_url: str) -> tuple[str, str]:
         port = parsed.port
     except ValueError:
         raise HTTPException(status_code=422, detail="URL GitHub không hợp lệ")
-
     if (
         parsed.scheme != "https"
         or parsed.hostname != "github.com"
@@ -558,13 +535,11 @@ def parse_github_repository_url(raw_url: str) -> tuple[str, str]:
         or parsed.fragment
     ):
         raise HTTPException(status_code=422, detail="Chỉ chấp nhận https://github.com/owner/repo")
-
     parts = parsed.path.strip("/").split("/")
     if len(parts) != 2:
         raise HTTPException(status_code=422, detail="URL phải có dạng https://github.com/owner/repo")
-
     owner, repo = parts
-    repo = re.sub(r"\.git$", "", repo, flags=re.IGNORECASE)
+    repo = re.sub(r"**\\.**git$", "", repo, flags=re.IGNORECASE)
     if (
         not re.fullmatch(r"[A-Za-z0-9-]{1,39}", owner)
         or not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", repo)
@@ -572,8 +547,6 @@ def parse_github_repository_url(raw_url: str) -> tuple[str, str]:
     ):
         raise HTTPException(status_code=422, detail="Tên GitHub owner hoặc repository không hợp lệ")
     return owner, repo
-
-
 def _github_request_sync(api_path: str):
     request = Request(
         f"https://api.github.com{api_path}",
@@ -594,19 +567,13 @@ def _github_request_sync(api_path: str):
         raise HTTPException(status_code=502, detail=f"GitHub API trả về HTTP {exc.code}")
     except (URLError, TimeoutError, ValueError):
         raise HTTPException(status_code=502, detail="Không thể đọc dữ liệu từ GitHub")
-
-
 async def github_request(api_path: str):
     return await asyncio.to_thread(_github_request_sync, api_path)
-
-
 async def _get_project_repository(db: AsyncSession, project_id: uuid.UUID):
     result = await db.execute(
         select(ProjectRepository).where(ProjectRepository.project_id == project_id)
     )
     return result.scalar_one_or_none()
-
-
 @app.post(
     "/api/projects/{project_id}/repository",
     response_model=ProjectRepositoryOut,
@@ -619,17 +586,14 @@ async def link_project_repository(
     db: AsyncSession = Depends(get_db),
 ):
     await _require_project_owner(db, project_id, current_user.id)
-
     if await _get_project_repository(db, project_id) is not None:
         raise HTTPException(status_code=409, detail="Dự án đã có Repository. Hãy gỡ link cũ trước.")
-
     owner, repo = parse_github_repository_url(payload.repository_url)
     github_data = await github_request(
         f"/repos/{quote(owner, safe='')}/{quote(repo, safe='')}"
     )
     if github_data.get("private"):
         raise HTTPException(status_code=422, detail="Chỉ hỗ trợ repository GitHub công khai")
-
     new_link = ProjectRepository(
         project_id=project_id,
         repository_url=github_data["html_url"],
@@ -645,8 +609,6 @@ async def link_project_repository(
         raise HTTPException(status_code=409, detail="Dự án đã liên kết Repository")
     await db.refresh(new_link)
     return new_link
-
-
 @app.get("/api/projects/{project_id}/repository", response_model=ProjectRepositoryOut)
 async def get_project_repository(
     project_id: uuid.UUID,
@@ -658,8 +620,6 @@ async def get_project_repository(
     if repository is None:
         raise HTTPException(status_code=404, detail="Dự án chưa liên kết Repository")
     return repository
-
-
 @app.delete("/api/projects/{project_id}/repository", status_code=status.HTTP_204_NO_CONTENT)
 async def unlink_project_repository(
     project_id: uuid.UUID,
@@ -673,8 +633,6 @@ async def unlink_project_repository(
     await db.delete(repository)
     await db.commit()
     return None
-
-
 @app.get("/api/projects/{project_id}/repository/commits")
 async def get_project_repository_commits(
     project_id: uuid.UUID,
@@ -685,7 +643,6 @@ async def get_project_repository_commits(
     repository = await _get_project_repository(db, project_id)
     if repository is None:
         raise HTTPException(status_code=404, detail="Dự án chưa liên kết Repository")
-
     owner = quote(repository.github_owner, safe="")
     repo = quote(repository.github_repo, safe="")
     github_info = await github_request(f"/repos/{owner}/{repo}")
@@ -693,7 +650,6 @@ async def get_project_repository_commits(
     commits_data = await github_request(
         f"/repos/{owner}/{repo}/commits?sha={quote(branch, safe='')}&per_page=30"
     )
-
     commits = []
     for item in commits_data:
         info = item.get("commit") or {}
@@ -706,7 +662,6 @@ async def get_project_repository_commits(
             "date": author.get("date"),
             "url": item.get("html_url"),
         })
-
     return {
         "repository": {
             "name": github_info["name"],

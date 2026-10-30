@@ -1,3 +1,4 @@
+
 /* BỐ CỤC CHUNG */
 * {
   box-sizing: border-box;
@@ -52,9 +53,12 @@ body {
   gap: 12px;
 }
 
+/* KHUNG ẢNH TÀI KHOẢN */
 .user-avatar-badge {
   width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   border-radius: 10px;
   background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   color: #ffffff;
@@ -65,8 +69,36 @@ body {
   justify-content: center;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.15);
+
+  /* Bổ sung để ảnh không tràn khỏi khung */
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
+/* ẢNH ĐẠI DIỆN ĐƯỢC CẬP NHẬT TỪ HỒ SƠ */
+.header-user-avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 9px;
+}
+
+/* Chữ viết tắt khi tài khoản chưa có ảnh */
+.user-avatar-badge span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+/* NÚT MENU */
 .menu-toggle-btn {
   background: #1f2937;
   border: 1px solid #374151;
@@ -225,10 +257,10 @@ body {
   flex-shrink: 0;
 }
 
-/* NỘI DUNG CHÍNH (ĐẨY LÙI SANG PHẢI KHI MỞ SIDEBAR) */
+/* NỘI DUNG CHÍNH */
 .main-content {
   flex: 1;
-  margin-left: 0; 
+  margin-left: 0;
   padding: 32px;
   overflow-y: auto;
   background-color: #0b0f19;
@@ -236,7 +268,7 @@ body {
   transition: margin-left 0.3s ease;
 }
 
-/* Khi sidebar mở trên desktop, đẩy nội dung sang phải bằng chiều rộng sidebar (250px) */
+/* Khi sidebar mở trên desktop */
 .main-content.sidebar-opened {
   margin-left: 250px;
 }
@@ -273,6 +305,7 @@ body {
     z-index: 80;
   }
 }
+
 /* CSS CHO NÚT THÔNG BÁO TRÊN HEADER */
 .notification-wrapper {
   position: relative;
@@ -331,8 +364,15 @@ body {
 }
 
 @keyframes fadeInNotification {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .notification-header {

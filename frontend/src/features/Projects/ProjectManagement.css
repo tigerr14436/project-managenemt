@@ -309,3 +309,54 @@
 .commit-msg-text { font-size: 13px; font-weight: 600; color: #f8fafc; margin: 0 0 2px 0; }
 .commit-meta-text { font-size: 11px; color: #64748b; margin: 0; font-family: monospace; }
 .commit-hash-tag { background: #1e293b; padding: 3px 8px; border-radius: 6px; color: #cbd5e1; font-family: monospace; font-size: 11px; border: 1px solid #334155; }
+
+/* PROJECT CARD: các nút hành động đồng đều, không xuống dòng */
+.the-du-an-item .chan-the-du-an {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+.the-du-an-item .chan-the-du-an .nut-hanh-dong-the {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 8px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.the-du-an-item .chan-the-du-an .nut-hanh-dong-the svg,
+.dong-du-an-item .phai-dong-du-an .nut-hanh-dong-the svg {
+  flex-shrink: 0;
+}
+.the-du-an-item .chan-the-du-an .nut-hanh-dong-the.xoa {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+}
+.the-du-an-item .chan-the-du-an .nut-hanh-dong-the.xoa:hover {
+  background-color: #ef4444;
+  color: #fff;
+}
+/* Danh sách: giữ các nút trên một hàng nếu đủ chỗ; tự xuống hàng trên màn hình hẹp */
+.dong-du-an-item .phai-dong-du-an {
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.dong-du-an-item .phai-dong-du-an .nut-hanh-dong-the {
+  min-height: 38px;
+  padding: 8px 12px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+@media (max-width: 700px) {
+  .dong-du-an-item { flex-wrap: wrap; }
+  .dong-du-an-item .phai-dong-du-an { width: 100%; justify-content: flex-start; }
+}
