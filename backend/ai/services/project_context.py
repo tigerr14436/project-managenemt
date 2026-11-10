@@ -14,10 +14,124 @@ from ai.services.permission_service import (
     get_project_ai_permissions,
 )
 
+from project_costs import (
+    ProjectCostSettings,
+    ProjectCostCategory,
+    ProjectExpense,
+)
 
 def serialize_datetime(value):
     """Chuyển date hoặc datetime thành chuỗi ISO."""
     return value.isoformat() if value else None
+async def build_project_financial_context(
+    db: AsyncSession,
+    project_id: UUID,
+) -> dict:
+    """
+    Lấy dữ liệu ngân sách và chi phí của đúng một dự án.
+
+    Chỉ gọi hàm này sau khi đã xác nhận người dùng là Owner.
+    Hàm chỉ đọc dữ liệu, không thay đổi Database.
+    """
+
+    # 1. Lấy ngân sách dự án
+    settings_result = await db.execute(
+        select(ProjectCostSettings).where(
+            ProjectCostSettings.project_id == project_id
+        )
+    )
+
+    settings = settings_result.scalar_one_or_none()
+
+    budget_limit = (
+        settings.budget_limit
+        if settings
+        else 0
+    )
+
+    # 2. Lấy danh mục chi phí
+    categories_result = await db.execute(
+        select(ProjectCostCategory)
+        .where(
+            ProjectCostCategory.project_id == project_id
+        )
+        .order_by(ProjectCostCategory.name.asc())
+    )
+
+    categories = categories_result.scalars().all()
+
+    # 3. Lấy các khoản chi thực tế
+    expenses_result = await db.execute(
+        select(ProjectExpense)
+        .where(
+            ProjectExpense.project_id == project_id
+        )
+        .order_by(ProjectExpense.expense_date.desc())
+    )
+
+    expenses = expenses_result.scalars().all()
+
+    # 4. Tính tổng chi thực tế
+    total_actual = sum(
+        expense.amount
+        for expense in expenses
+    )
+
+    # 5. Tổng dự toán theo danh mục
+    total_category_estimated = sum(
+        category.estimated_amount
+        for category in categories
+    )
+
+    # 6. Nhóm chi phí thực tế theo danh mục
+    category_map = {
+        str(category.id): category.name
+        for category in categories
+    }
+
+    expenses_data = [
+        {
+            "name": expense.name,
+            "category_id": str(expense.category_id),
+            "category_name": category_map.get(
+                str(expense.category_id),
+                "Không xác định",
+            ),
+            "amount": expense.amount,
+            "expense_date": (
+                expense.expense_date.isoformat()
+                if expense.expense_date
+                else None
+            ),
+            "description": expense.description,
+        }
+        for expense in expenses
+    ]
+
+    categories_data = [
+        {
+            "id": str(category.id),
+            "name": category.name,
+            "description": category.description,
+            "estimated_amount": category.estimated_amount,
+        }
+        for category in categories
+    ]
+
+    return {
+        "budget_limit": budget_limit,
+        "total_actual": total_actual,
+
+        # Có thể âm nếu tổng chi vượt ngân sách.
+        "remaining_budget": budget_limit - total_actual,
+
+        "total_category_estimated": (
+            total_category_estimated
+        ),
+
+        "categories": categories_data,
+        "expenses": expenses_data,
+    }
 
 
 async def build_project_context(
@@ -56,6 +170,19 @@ async def build_project_context(
         }
 
     is_owner = permissions["is_owner"]
+    # =====================================================
+    # 1.1. LẤY DỮ LIỆU TÀI CHÍNH
+    # =====================================================
+
+    financial_context = None
+
+    if is_owner:
+        financial_context = (
+            await build_project_financial_context(
+                db=db,
+                project_id=project_id,
+            )
+        )
 
     accessible_group_ids = set(
         permissions["accessible_group_ids"]
@@ -395,6 +522,9 @@ async def build_project_context(
 
     return {
         "project": project_data,
+
+                # Dữ liệu tài chính chỉ dành cho Owner.
+        "financial": financial_context,
 
         "current_user": {
             "id": str(user_id),
